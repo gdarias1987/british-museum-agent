@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: british-museum-agent
+  labels:
+    app.kubernetes.io/name: british-museum-agent
+    app.kubernetes.io/part-of: british-museum-agent

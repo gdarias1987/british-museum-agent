@@ -1,0 +1,72 @@
+# Despliegue y operaciÃ³n
+
+## Desarrollo local: Docker Compose
+
+1. Copiar `.env.example` a `.env`.
+2. Completar como mÃ­nimo `STAFF_DEMO_USERNAME`, `STAFF_DEMO_PASSWORD`, `JWT_SECRET` y `MCP_INTERNAL_TOKEN`. Las claves de Gemini, LangSmith y Phoenix Cloud son opcionales para el modo local.
+3. Ejecutar `docker compose up --build`.
+4. Abrir:
+   - UI: `http://localhost:8501`
+   - API: `http://localhost:8000/docs`
+   - MCP: `http://localhost:8001/health`
+   - Phoenix: `http://localhost:6006`
+
+El backend ejecuta la ingesta y la indexaciÃ³n Chroma durante el arranque. La primera ejecuciÃ³n puede tener cold start por descarga/carga del modelo de embeddings. Los datos no quedan en la imagen: Compose monta `data/raw`, `data/processed`, `data/chroma` y `data/sqlite`; Phoenix y la cachÃ© de Hugging Face usan volÃºmenes nombrados.
+
+Los contenedores tienen healthchecks y dependencias ordenadas: MCP debe estar saludable antes del backend y el backend antes de la UI.
+
+## Kubernetes
+
+La opciÃ³n preparada para despliegue es Kubernetes mediante Kustomize:
+
+- Base: `deploy/base`.
+- Entorno de desarrollo: `deploy/overlays/dev`.
+- Namespace: `british-museum-agent`.
+- Componentes: backend, UI, MCP server y Phoenix.
+- Persistencia: PVC separados para Chroma, SQLite, Hugging Face y Phoenix.
+- Seguridad: pods no root, filesystem de solo lectura, capacidades Linux descartadas, probes y NetworkPolicy.
+
+Validar sin aplicar:
+
+```powershell
+python scripts/validate_k8s.py --root . --kubectl-dry-run skip
+.\scripts\deploy_k8s.ps1 -Action validate -Overlay dev
+.\scripts\deploy_k8s.ps1 -Action render -Overlay dev
+.\scripts\deploy_k8s.ps1 -Action dry-run -Overlay dev
+```
+
+Aplicar en un cluster con `kubectl` configurado:
+
+```powershell
+$env:STAFF_DEMO_PASSWORD = "una-clave-real-larga"
+$env:JWT_SECRET = "un-secreto-real-de-al-menos-32-caracteres"
+$env:MCP_INTERNAL_TOKEN = "un-token-real-de-al-menos-32-caracteres"
+.\scripts\deploy_k8s.ps1 -Action apply -Overlay dev
+.\scripts\deploy_k8s.ps1 -Action status -Overlay dev
+```
+
+El script crea/actualiza el `Secret` desde variables de proceso. `deploy/base/secret.example.yaml` es solo una plantilla y no se aplica.
+
+## Escalado y lÃ­mites actuales
+
+La UI tiene HPA de 2 a 5 rÃ©plicas. El backend tiene HPA declarado, pero queda intencionalmente limitado a 1 rÃ©plica (`minReplicas: 1`, `maxReplicas: 1`) porque comparte volÃºmenes `ReadWriteOnce` con SQLite, Chroma y la cachÃ© de embeddings. Esto evita corrupciÃ³n o bloqueos por mÃºltiples escritores.
+
+Para escalar el backend de verdad hay que migrar primero SQLite/Chroma y la cachÃ© a servicios o almacenamiento multi-writer adecuados, y luego subir `maxReplicas`. El HPA necesita un `metrics server` (`metrics-server`) instalado en el cluster; los manifiestos no lo instalan.
+
+No se implementÃ³ serverless como ruta principal: el proceso depende de volÃºmenes persistentes y tiene warm-up de embeddings. Kubernetes es la alternativa entregable para mostrar despliegue, healthchecks, escalado controlado y rollback.
+
+## Rollback
+
+```powershell
+.\scripts\deploy_k8s.ps1 -Action rollback -Overlay dev -Component backend
+```
+
+El rollback usa `kubectl rollout history` y `kubectl rollout undo`. Antes de usarlo en producciÃ³n conviene pinnear versiones inmutables de las imÃ¡genes; Phoenix estÃ¡ marcado con `:latest` solo para la demo local.
+
+## OperaciÃ³n recomendada
+
+- Verificar `kubectl get pods,deployments,services,persistentvolumeclaims,horizontalpodautoscalers -n british-museum-agent`.
+- Confirmar que los PVC estÃ©n `Bound`.
+- Revisar `/api/v1/health`, `/metrics` y `/api/v1/metrics/summary`.
+- Mantener los secretos fuera de Git y nunca construirlos dentro de una imagen.
+- Respaldar SQLite, Chroma y Phoenix antes de cambios de infraestructura.

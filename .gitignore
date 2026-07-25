@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.playwright-cli/
+.env
+.env.*
+!.env.example
+/data/chroma/**
+/data/sqlite/**
+/data/processed/knowledge_index.json
+.DS_Store

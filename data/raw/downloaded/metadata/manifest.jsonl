@@ -1,0 +1,9 @@
+{"file": "README.md", "size_bytes": 903, "sha256": "ffcab4eb90d3e2489f4a954b7a3e67d382c6a2b5b24c44ef4646a38b111f004b"}
+{"file": "metadata/assets_to_download.csv", "size_bytes": 1005, "sha256": "bf9f8c0cff0bb34adb6140397053409ab494686de8b24111133a3acea06a4cb9"}
+{"file": "pages/object_1938_0520_1_nebuchadnezzar.md", "size_bytes": 474, "sha256": "dc7272cf7ef63ffef95907722508d99b17d99c295e9c3aacd469e129cc6c2c7e"}
+{"file": "pages/object_K3375_gilgamesh.md", "size_bytes": 541, "sha256": "50254bc3089adc12594052ed1be7fb87db7bf48ee366e09ecf3527e827265a8e"}
+{"file": "pages/room_55_mesopotamia.md", "size_bytes": 693, "sha256": "5255c493206262c8680767f5fe3e4382971559c77506225af3ca22757f2e58dc"}
+{"file": "pages/room_56_mesopotamia.md", "size_bytes": 808, "sha256": "4816f049c2120aa97398be67b6e61788fa7f1001cfdfb1e6c174786e9a6032f7"}
+{"file": "pages/rooms_7_8_assyria_nimrud.md", "size_bytes": 509, "sha256": "c5331ca5d1079a2e97078f9e14438ed0ab149287f344c8a4cbb186b5675dcd8f"}
+{"file": "pdf/mesopotamia_official_snapshot.pdf", "size_bytes": 3840, "sha256": "f0317ef620a0660593703180062358670c91641be0cd735ac763e20e6b8e00fa"}
+{"file": "scripts/download_assets.py", "size_bytes": 1133, "sha256": "5cdc5cadcf8890f8c866a27799b2293a5a37097730f11f099c5ef2dcc52eb0f7"}

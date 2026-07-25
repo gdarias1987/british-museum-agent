@@ -1,0 +1,152 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-server
+  labels:
+    app.kubernetes.io/name: mcp-server
+    app.kubernetes.io/component: mcp-server
+  annotations:
+    deployment.british-museum-agent/scaling-guard: sqlite-is-single-writer
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mcp-server
+      app.kubernetes.io/component: mcp-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: mcp-server
+        app.kubernetes.io/component: mcp-server
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: mcp-server
+          image: british-museum-agent-backend:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -c
+          args:
+            - python scripts/seed_db.py && exec python -m british_museum_agent.adapters_mcp.server
+          ports:
+            - name: http
+              containerPort: 8001
+              protocol: TCP
+          env:
+            - name: SQLITE_PATH
+              valueFrom:
+                configMapKeyRef:
+                  name: british-museum-config
+                  key: SQLITE_PATH
+            - name: STAFF_DEMO_USERNAME
+              valueFrom:
+                configMapKeyRef:
+                  name: british-museum-config
+                  key: STAFF_DEMO_USERNAME
+            - name: MCP_TRANSPORT
+              valueFrom:
+                configMapKeyRef:
+                  name: british-museum-config
+                  key: MCP_TRANSPORT
+            - name: MCP_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: british-museum-config
+                  key: MCP_HOST
+            - name: MCP_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: british-museum-config
+                  key: MCP_PORT
+            - name: MCP_PATH
+              valueFrom:
+                configMapKeyRef:
+                  name: british-museum-config
+                  key: MCP_PATH
+            - name: STAFF_DEMO_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: british-museum-secrets
+                  key: STAFF_DEMO_PASSWORD
+            - name: MCP_INTERNAL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: british-museum-secrets
+                  key: MCP_INTERNAL_TOKEN
+            - name: PYTHONDONTWRITEBYTECODE
+              value: "1"
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: sqlite-data
+              mountPath: /app/data/sqlite
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: sqlite-data
+          persistentVolumeClaim:
+            claimName: sqlite-data
+        - name: tmp
+          emptyDir:
+            sizeLimit: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-server
+  labels:
+    app.kubernetes.io/name: mcp-server
+    app.kubernetes.io/component: mcp-server
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: mcp-server
+    app.kubernetes.io/component: mcp-server
+  ports:
+    - name: http
+      port: 8001
+      targetPort: http
+      protocol: TCP

@@ -1,0 +1,792 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Guía pedagógica y auditoría técnica del British Museum Agent.">
+  <link rel="icon" href="data:,">
+  <title>Cómo funciona el British Museum Agent</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #172033;
+      --muted: #526074;
+      --paper: #f5f7fb;
+      --surface: #ffffff;
+      --line: #cbd5e1;
+      --nav: #10233f;
+      --nav-ink: #f8fafc;
+      --blue: #0758a5;
+      --blue-soft: #e8f2fc;
+      --teal: #006b64;
+      --teal-soft: #e1f5f2;
+      --green: #176b3a;
+      --green-soft: #e7f6ec;
+      --amber: #815500;
+      --amber-soft: #fff4d6;
+      --red: #a12626;
+      --red-soft: #fdecec;
+      --violet: #5f3b92;
+      --violet-soft: #f1eafa;
+      --shadow: 0 8px 28px rgba(15, 35, 63, .09);
+      --radius: 14px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 5.4rem; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.62;
+    }
+    a { color: var(--blue); }
+    a:hover { text-decoration-thickness: 2px; }
+    a:focus-visible, summary:focus-visible { outline: 3px solid #f4b942; outline-offset: 3px; }
+    code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+    code { font-size: .92em; }
+    pre {
+      margin: 0;
+      padding: 1rem;
+      overflow-x: auto;
+      border: 1px solid #314664;
+      border-radius: 10px;
+      color: #eff6ff;
+      background: #13243c;
+      line-height: 1.5;
+      tab-size: 2;
+    }
+    h1, h2, h3 { line-height: 1.18; letter-spacing: -.02em; }
+    h1 { max-width: 900px; margin: 0; font-size: clamp(2rem, 5vw, 4rem); }
+    h2 { margin: 0 0 1rem; font-size: clamp(1.55rem, 3vw, 2.3rem); }
+    h3 { margin: 1.4rem 0 .6rem; font-size: 1.15rem; }
+    p { margin: .6rem 0 1rem; }
+    ul, ol { padding-left: 1.25rem; }
+    li + li { margin-top: .35rem; }
+    strong { font-weight: 750; }
+
+    .skip-link {
+      position: absolute;
+      top: -5rem;
+      left: 1rem;
+      z-index: 100;
+      padding: .65rem 1rem;
+      background: #ffffff;
+      color: #000000;
+      border: 2px solid #000000;
+    }
+    .skip-link:focus { top: .75rem; }
+
+    .hero {
+      padding: clamp(2.8rem, 8vw, 6.8rem) max(1rem, calc((100vw - 1180px) / 2));
+      color: #ffffff;
+      background:
+        radial-gradient(circle at 82% 20%, rgba(49, 196, 184, .24), transparent 28rem),
+        linear-gradient(135deg, #10233f 0%, #173b67 62%, #075f6b 100%);
+    }
+    .eyebrow {
+      display: inline-block;
+      margin-bottom: 1rem;
+      color: #a9eee8;
+      font-size: .8rem;
+      font-weight: 800;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+    .hero p { max-width: 760px; margin: 1.2rem 0 0; color: #dce8f7; font-size: 1.08rem; }
+    .hero-meta { display: flex; flex-wrap: wrap; gap: .65rem; margin-top: 1.5rem; }
+    .hero-meta span {
+      padding: .36rem .72rem;
+      border: 1px solid rgba(255, 255, 255, .3);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .08);
+      font-size: .86rem;
+    }
+
+    .site-nav {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      border-bottom: 1px solid #29425f;
+      background: var(--nav);
+      box-shadow: 0 3px 14px rgba(0, 0, 0, .18);
+    }
+    .site-nav ul {
+      display: flex;
+      gap: .15rem;
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: .5rem 1rem;
+      overflow-x: auto;
+      list-style: none;
+      scrollbar-width: thin;
+    }
+    .site-nav li { margin: 0; }
+    .site-nav a {
+      display: block;
+      padding: .45rem .66rem;
+      border-radius: 7px;
+      color: var(--nav-ink);
+      font-size: .84rem;
+      font-weight: 650;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .site-nav a:hover, .site-nav a:focus-visible { background: #294b72; }
+
+    main { max-width: 1180px; margin: 0 auto; padding: 2.4rem 1rem 5rem; }
+    section { margin: 0 0 4.5rem; }
+    .section-lead { max-width: 820px; color: var(--muted); font-size: 1.04rem; }
+    .kicker { margin-bottom: .45rem; color: var(--teal); font-size: .78rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+
+    .grid { display: grid; gap: 1rem; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card {
+      padding: 1.15rem;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .card h3:first-child { margin-top: 0; }
+    .stat { border-top: 5px solid var(--blue); }
+    .stat strong { display: block; margin-bottom: .2rem; color: var(--blue); font-size: 1.7rem; line-height: 1.1; }
+    .callout {
+      padding: 1rem 1.1rem;
+      border-left: 5px solid var(--amber);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      background: var(--amber-soft);
+    }
+    .callout.critical { border-color: var(--red); background: var(--red-soft); }
+    .callout.good { border-color: var(--green); background: var(--green-soft); }
+    .callout p:last-child { margin-bottom: 0; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .3rem;
+      padding: .22rem .58rem;
+      border: 1px solid currentColor;
+      border-radius: 999px;
+      font-size: .78rem;
+      font-weight: 800;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+    .badge.ok { color: var(--green); background: var(--green-soft); }
+    .badge.partial { color: var(--amber); background: var(--amber-soft); }
+    .badge.no { color: var(--red); background: var(--red-soft); }
+    .badge.info { color: var(--blue); background: var(--blue-soft); }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(120px, 1fr));
+      gap: 1.6rem;
+      align-items: stretch;
+      margin: 1.5rem 0;
+    }
+    .flow-node {
+      position: relative;
+      display: flex;
+      min-height: 112px;
+      flex-direction: column;
+      justify-content: center;
+      padding: .9rem;
+      border: 2px solid var(--blue);
+      border-radius: 12px;
+      background: var(--blue-soft);
+      text-align: center;
+    }
+    .flow-node:nth-child(4) { border-color: var(--teal); background: var(--teal-soft); }
+    .flow-node:nth-child(5) { border-color: var(--violet); background: var(--violet-soft); }
+    .flow-node:last-child { border-color: var(--green); background: var(--green-soft); }
+    .flow-node:not(:last-child)::after {
+      content: "→";
+      position: absolute;
+      top: 50%;
+      right: -1.45rem;
+      color: var(--muted);
+      font-size: 1.4rem;
+      font-weight: 900;
+      transform: translateY(-50%);
+    }
+    .flow-node small { display: block; margin-top: .35rem; color: var(--muted); }
+    .flow.flow-five { grid-template-columns: repeat(5, minmax(120px, 1fr)); }
+    .parallel {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: .5rem;
+      margin-top: .55rem;
+    }
+    .parallel span { padding: .35rem; border: 1px dashed currentColor; border-radius: 6px; font-size: .76rem; }
+
+    .steps { margin: 1.4rem 0 0; padding: 0; counter-reset: graph-step; list-style: none; }
+    .steps li {
+      position: relative;
+      margin: 0 0 0 1.1rem;
+      padding: 0 0 1.35rem 2.5rem;
+      border-left: 2px solid var(--line);
+      counter-increment: graph-step;
+    }
+    .steps li::before {
+      content: counter(graph-step);
+      position: absolute;
+      top: -.1rem;
+      left: -1.05rem;
+      display: grid;
+      width: 2rem;
+      height: 2rem;
+      place-items: center;
+      border-radius: 50%;
+      color: #ffffff;
+      background: var(--blue);
+      font-weight: 800;
+    }
+    .steps li:last-child { border-color: transparent; }
+    .steps strong { display: block; }
+
+    .formula {
+      margin: 1rem 0;
+      padding: 1.15rem;
+      border: 2px solid var(--violet);
+      border-radius: var(--radius);
+      background: var(--violet-soft);
+      text-align: center;
+      font-size: clamp(1rem, 2.2vw, 1.35rem);
+      font-weight: 800;
+    }
+    .score-bar { display: flex; min-height: 54px; margin: .8rem 0; overflow: hidden; border-radius: 9px; color: #ffffff; font-weight: 800; }
+    .score-bar span { display: grid; place-items: center; padding: .4rem; text-align: center; }
+    .score-vector { width: 25%; background: #0758a5; }
+    .score-rerank { width: 75%; background: #5f3b92; }
+
+    .branch { position: relative; padding-top: 1.2rem; }
+    .branch::before { content: ""; position: absolute; top: 0; left: 25%; right: 25%; border-top: 2px solid var(--line); }
+    .role-card { border-top: 5px solid var(--blue); }
+    .role-card.staff { border-top-color: var(--violet); }
+
+    .table-wrap { width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); }
+    table { width: 100%; border-collapse: collapse; font-size: .91rem; }
+    caption { padding: .8rem 1rem; color: var(--muted); text-align: left; font-weight: 650; }
+    th, td { padding: .78rem .85rem; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: #ffffff; background: #173b67; }
+    tr:last-child td { border-bottom: 0; }
+    tbody tr:nth-child(even) { background: #f8fafc; }
+    .status-cell { width: 8.5rem; }
+    .evidence { color: var(--muted); font-family: "SFMono-Regular", Consolas, monospace; font-size: .78rem; }
+
+    details { margin: .8rem 0; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+    summary { padding: .85rem 1rem; cursor: pointer; color: var(--blue); font-weight: 800; }
+    details > div { padding: 0 1rem 1rem; }
+
+    .priority { display: grid; grid-template-columns: auto 1fr; gap: .8rem 1rem; align-items: start; }
+    .priority-num {
+      display: grid;
+      width: 2.3rem;
+      height: 2.3rem;
+      place-items: center;
+      border-radius: 50%;
+      color: #ffffff;
+      background: var(--red);
+      font-weight: 850;
+    }
+    .priority > div:nth-child(4n+3) { background: var(--amber); }
+    .priority > div:nth-child(n+7) { background: var(--blue); }
+    .priority h3 { margin: 0 0 .25rem; }
+
+    .script { padding: 1.3rem; border-left: 5px solid var(--teal); background: var(--surface); box-shadow: var(--shadow); }
+    .script p { margin: 0 0 .9rem; }
+    .time { color: var(--teal); font-weight: 850; }
+
+    footer { padding: 2rem 1rem; color: #dce8f7; background: #10233f; text-align: center; }
+    footer p { margin: .3rem; }
+
+    @media (max-width: 980px) {
+      .flow { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .flow-node:nth-child(3)::after { display: none; }
+      .grid-3 { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 700px) {
+      html { scroll-padding-top: 4.8rem; }
+      .grid-2, .grid-3, .flow { grid-template-columns: 1fr; }
+      .flow.flow-five { grid-template-columns: 1fr; }
+      .flow { gap: 1.8rem; }
+      .flow-node:not(:last-child)::after {
+        top: auto;
+        right: 50%;
+        bottom: -1.6rem;
+        transform: translateX(50%) rotate(90deg);
+      }
+      .flow-node:nth-child(3)::after { display: block; }
+      .branch::before { display: none; }
+      .card { padding: 1rem; }
+      th, td { padding: .65rem; }
+    }
+    @media print {
+      body { background: #ffffff; font-size: 10.5pt; }
+      .site-nav, .skip-link { display: none; }
+      .hero { padding: 2rem; background: #173b67 !important; print-color-adjust: exact; }
+      main { max-width: none; padding: 1.5rem; }
+      section { break-inside: avoid; margin-bottom: 2rem; }
+      .card, .table-wrap, .script { box-shadow: none; }
+      details > div { display: block; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#contenido">Saltar al contenido principal</a>
+
+  <header class="hero">
+    <span class="eyebrow">Guía pedagógica · implementación auditada</span>
+    <h1>Cómo funciona el British Museum Agent</h1>
+    <p>Una explicación para entender el sistema, demostrarlo en la entrega y hablar con precisión sobre lo que realmente está implementado —incluidas sus brechas.</p>
+    <div class="hero-meta" aria-label="Características principales">
+      <span>RAG en español</span>
+      <span>LangGraph</span>
+      <span>Gemini</span>
+      <span>MCP + SQLite</span>
+      <span>Streamlit + FastAPI</span>
+    </div>
+  </header>
+
+  <nav class="site-nav" aria-label="Índice de contenidos">
+    <ul>
+      <li><a href="#resumen">Resumen</a></li>
+      <li><a href="#arquitectura">Arquitectura</a></li>
+      <li><a href="#grafo">Grafo</a></li>
+      <li><a href="#rag">RAG</a></li>
+      <li><a href="#ranking">Ranking</a></li>
+      <li><a href="#roles">Roles</a></li>
+      <li><a href="#contratos">Contratos</a></li>
+      <li><a href="#ia-observabilidad">IA y trazas</a></li>
+      <li><a href="#docker">Docker</a></li>
+      <li><a href="#matriz">Matriz</a></li>
+      <li><a href="#brechas">Brechas</a></li>
+      <li><a href="#realidad">Real vs. intención</a></li>
+      <li><a href="#guion">Guion oral</a></li>
+    </ul>
+  </nav>
+
+  <main id="contenido">
+    <section id="resumen" aria-labelledby="titulo-resumen">
+      <p class="kicker">La respuesta corta</p>
+      <h2 id="titulo-resumen">Resumen ejecutivo</h2>
+      <p class="section-lead">El proyecto es un asistente en español con recuperación semántica, reranking, generación con Gemini y operaciones protegidas por MCP. La arquitectura es real, modular y fue verificada localmente; el cumplimiento global del enunciado sigue siendo parcial porque algunas capacidades pedidas no existen todavía.</p>
+
+      <div class="grid grid-3" aria-label="Indicadores principales">
+        <article class="card stat"><strong>13</strong>chunks españoles persistidos en Chroma y en el fallback léxico.</article>
+        <article class="card stat"><strong>10 → 4</strong>candidatos vectoriales iniciales y resultados finales entregados al generador.</article>
+        <article class="card stat"><strong>25 / 75</strong>peso del score vectorial frente al score del cross-encoder.</article>
+      </div>
+
+      <h3>Evidencia de ejecución local ya verificada</h3>
+      <div class="grid grid-3" aria-label="Verificaciones locales del proyecto">
+        <article class="card stat"><strong>51 passed</strong>Suite actual completa ejecutada correctamente, con una advertencia conocida de LangChain.</article>
+        <article class="card stat"><strong>3 servicios</strong>Docker Compose verificado localmente con <code>ui</code>, <code>backend</code> y <code>mcp-server</code> activos y saludables.</article>
+        <article class="card stat"><strong>E2E local</strong>Flujos RAG, UI, login, alta de incidentes y consulta por ID probados en <code>localhost</code>.</article>
+      </div>
+      <p class="evidence">Evidencia de sesiones previas del proyecto: pytest 51 passed; Compose y flujos locales verificados. Esto no equivale a validar Kubernetes, serverless ni servicios externos.</p>
+      <div class="grid grid-2" style="margin-top:1rem">
+        <div class="callout good">
+          <strong>Fortalezas demostrables</strong>
+          <p>Chroma persistente, embeddings multilingües, reranker real, LangGraph compilado, MCP oficial, JWT staff, fallbacks explícitos y estado de runtime en cada respuesta.</p>
+        </div>
+        <div class="callout critical">
+          <strong>Brechas que no deben ocultarse</strong>
+          <p>El grafo es acíclico; no hay Arize, métricas de calidad/recursos, Kubernetes ni serverless; LangChain no coordina el pipeline completo.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="arquitectura" aria-labelledby="titulo-arquitectura">
+      <p class="kicker">Vista de punta a punta</p>
+      <h2 id="titulo-arquitectura">Del usuario a la respuesta</h2>
+      <p class="section-lead">Streamlit es una interfaz delgada. FastAPI valida identidad y contratos. LangGraph toma las decisiones. RAG aporta evidencia, MCP aporta datos operativos y Gemini redacta la respuesta.</p>
+
+      <div class="flow" role="img" aria-label="Flujo completo: Streamlit envía la consulta a FastAPI; FastAPI valida y llama a LangGraph; LangGraph usa RAG y MCP; luego Gemini genera y FastAPI devuelve la respuesta a Streamlit.">
+        <div class="flow-node"><strong>1. Streamlit</strong><small>Consulta, ubicación y JWT opcional</small></div>
+        <div class="flow-node"><strong>2. FastAPI</strong><small>Valida Pydantic y fuerza el rol real</small></div>
+        <div class="flow-node"><strong>3. LangGraph</strong><small>Enruta estado, evidencia y tools</small></div>
+        <div class="flow-node"><strong>4. Evidencia</strong><div class="parallel"><span>RAG · Chroma</span><span>MCP · SQLite</span></div></div>
+        <div class="flow-node"><strong>5. Gemini</strong><small>Genera con contexto o cae al fallback</small></div>
+        <div class="flow-node"><strong>6. Respuesta</strong><small>Texto, fuentes, scores, tools y runtime</small></div>
+      </div>
+
+      <div class="callout">
+        <strong>Regla de confianza clave:</strong> el campo <code>user_role</code> enviado por el cliente no habilita privilegios. FastAPI lo reemplaza por <code>staff</code> sólo cuando valida un JWT; de lo contrario fuerza <code>visitor</code>.
+        <div class="evidence">Evidencia: src/british_museum_agent/api/main.py:147-158</div>
+      </div>
+    </section>
+
+    <section id="grafo" aria-labelledby="titulo-grafo">
+      <p class="kicker">Orquestación</p>
+      <h2 id="titulo-grafo">Los pasos reales de LangGraph</h2>
+      <ol class="steps">
+        <li><strong><code>validate_input</code></strong>Limpia la consulta, rechaza vacío y fuerza idioma español.</li>
+        <li><strong><code>handle_incident</code></strong>Antes de RAG, detecta altas, confirmaciones o consultas de incidentes.</li>
+        <li><strong><code>retrieve_context</code></strong>Busca la consulta y suma <code>location_hint</code> cuando existe.</li>
+        <li><strong><code>evaluate_context</code></strong>Acepta evidencia si el primer score es <strong>≥ 0,25</strong>; también reconoce consultas operativas sobre salas.</li>
+        <li><strong><code>decide_tool_usage</code></strong>Decide si corresponde pedir <code>get_gallery_status</code> a MCP.</li>
+        <li><strong><code>execute_tool</code></strong>Ejecuta MCP, registra input, salida, estado y latencia.</li>
+        <li><strong><code>generate_answer</code> / <code>generate_no_evidence</code></strong>Invoca Gemini con evidencia o responde que falta contexto sin inventar.</li>
+        <li><strong><code>finalize</code></strong>Construye el contrato final y termina en <code>END</code>.</li>
+      </ol>
+      <div class="callout critical">
+        <strong>Precisión para la entrega:</strong> usa LangGraph de verdad, pero no es un agente cíclico. Todas las aristas avanzan hacia <code>END</code>; no hay retorno, replanificación ni segundo intento dentro del grafo.
+        <div class="evidence">Evidencia: src/british_museum_agent/agent/graph.py:101-145</div>
+      </div>
+    </section>
+
+    <section id="rag" aria-labelledby="titulo-rag">
+      <p class="kicker">Recuperación aumentada</p>
+      <h2 id="titulo-rag">El RAG que existe hoy</h2>
+      <div class="grid grid-3">
+        <article class="card">
+          <h3>1. Corpus e ingesta</h3>
+          <p>Lee únicamente <code>data/raw/spanish/*.md</code>. Los corpus descargados en otras carpetas no entran en el índice activo.</p>
+          <span class="badge info">13 chunks persistidos</span>
+          <div class="evidence">corpus.py:22-30 · index_manifest.json:2-8</div>
+        </article>
+        <article class="card">
+          <h3>2. Chunking</h3>
+          <p>Agrupa párrafos hasta un máximo nominal de 900 caracteres, antepone el título y no usa overlap.</p>
+          <p>Un párrafo individual demasiado largo no se subdivide.</p>
+          <div class="evidence">corpus.py:80-101</div>
+        </article>
+        <article class="card">
+          <h3>3. Embeddings</h3>
+          <p><code>sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2</code>, ejecutado localmente y con vectores normalizados.</p>
+          <div class="evidence">config.py:24 · vector_store.py:30-51</div>
+        </article>
+        <article class="card">
+          <h3>4. Chroma</h3>
+          <p>Cliente persistente, colección <code>british_museum_es</code>, HNSW y distancia coseno. La ingesta trabaja en lotes de 32.</p>
+          <div class="evidence">indexer.py:64-82</div>
+        </article>
+        <article class="card">
+          <h3>5. Recuperación</h3>
+          <p>Chroma recupera hasta <strong>10 candidatos</strong>. El reranker los reordena y devuelve <strong>4 resultados</strong>.</p>
+          <div class="evidence">config.py:26 · vector_store.py:165-212</div>
+        </article>
+        <article class="card">
+          <h3>6. Gate de evidencia</h3>
+          <p>El grafo continúa sólo cuando el mejor score es <strong>≥ 0,25</strong>. Con menos evidencia pide precisión.</p>
+          <div class="evidence">agent/graph.py:199-216</div>
+        </article>
+      </div>
+
+      <details>
+        <summary>¿Qué ocurre si Chroma no está disponible?</summary>
+        <div>
+          <p>El sistema usa un índice JSON léxico. Expande algunos sinónimos en español, calcula overlap de términos y devuelve top-4. Es una degradación explícita: no se presenta como búsqueda vectorial.</p>
+          <div class="evidence">retrieval/knowledge_base.py:40-109 · retrieval/vector_store.py:215-259</div>
+        </div>
+      </details>
+    </section>
+
+    <section id="ranking" aria-labelledby="titulo-ranking">
+      <p class="kicker">Orden de relevancia</p>
+      <h2 id="titulo-ranking">Ranking y reranking, sin magia</h2>
+      <p class="section-lead">Chroma produce un orden semántico inicial. Después, un cross-encoder analiza cada par consulta–pasaje con más precisión. El score final combina ambos.</p>
+
+      <div class="score-bar" aria-label="El score final asigna 25 por ciento al score vectorial y 75 por ciento al reranker">
+        <span class="score-vector">25% vector</span>
+        <span class="score-rerank">75% reranker</span>
+      </div>
+      <div class="formula" aria-label="Fórmula de score final">score final = 0,25 × score vectorial + 0,75 × score reranker</div>
+
+      <div class="grid grid-2">
+        <article class="card">
+          <h3>Cómo se calculan los componentes</h3>
+          <ul>
+            <li><strong>Vectorial:</strong> <code>clamp(1 − distancia_coseno / 2)</code>.</li>
+            <li><strong>Reranker:</strong> sigmoid del logit del cross-encoder.</li>
+            <li><strong>Modelo:</strong> <code>cross-encoder/mmarco-mMiniLMv2-L12-H384-v1</code>.</li>
+            <li><strong>Orden:</strong> score final descendente.</li>
+          </ul>
+        </article>
+        <article class="card">
+          <h3>Ejemplo numérico</h3>
+          <p>Supongamos un fragmento con score vectorial <strong>0,80</strong> y score del reranker <strong>0,60</strong>:</p>
+          <p><code>0,25 × 0,80 + 0,75 × 0,60</code></p>
+          <p><code>0,20 + 0,45 = 0,65</code></p>
+          <p><strong>Score final: 0,65.</strong> Supera el umbral 0,25 y puede alimentar a Gemini.</p>
+        </article>
+      </div>
+      <div class="evidence">Evidencia: retrieval/vector_store.py:54-71,165-212,276-284</div>
+    </section>
+
+    <section id="roles" aria-labelledby="titulo-roles">
+      <p class="kicker">Autorización y operaciones</p>
+      <h2 id="titulo-roles">Visitante, personal e incidentes</h2>
+      <div class="grid grid-2 branch">
+        <article class="card role-card">
+          <h3>Visitante</h3>
+          <span class="badge info">Chat público</span>
+          <ul>
+            <li>Consulta el corpus mediante RAG.</li>
+            <li>Puede pedir el estado operativo de salas mediante MCP.</li>
+            <li>No puede crear ni leer incidentes internos.</li>
+            <li>Aunque envíe <code>user_role: "staff"</code>, la API lo fuerza a visitante sin JWT.</li>
+          </ul>
+        </article>
+        <article class="card role-card staff">
+          <h3>Personal</h3>
+          <span class="badge info">JWT HS256</span>
+          <ul>
+            <li>Inicia sesión contra hash bcrypt en SQLite.</li>
+            <li>Puede consultar incidentes por ID mediante chat + MCP.</li>
+            <li>Puede preparar y confirmar altas conversacionales.</li>
+            <li>Puede usar el formulario estructurado para alta directa.</li>
+          </ul>
+        </article>
+      </div>
+
+      <h3>Alta conversacional protegida</h3>
+      <div class="flow flow-five" role="img" aria-label="Alta de incidente por chat: personal autenticado describe el incidente; se validan campos; se guarda un pendiente; se exige Confirmo más nonce dentro de cinco minutos; MCP crea el incidente.">
+        <div class="flow-node"><strong>Descripción</strong><small>Personal + JWT</small></div>
+        <div class="flow-node"><strong>Validación</strong><small>Sala, categoría, prioridad, detalle</small></div>
+        <div class="flow-node"><strong>Pendiente</strong><small>Nonce ligado a sesión y usuario</small></div>
+        <div class="flow-node"><strong>Confirmación</strong><small><code>Confirmo &lt;nonce&gt;</code> · 5 min</small></div>
+        <div class="flow-node"><strong>MCP</strong><small><code>create_incident</code></small></div>
+      </div>
+
+      <div class="callout critical">
+        <strong>Dos caminos con garantías diferentes:</strong> la confirmación aplica al chat. El formulario llama directamente a <code>POST /api/v1/incidents</code>; exige JWT, pero no nonce. Además, el pendiente conversacional vive en memoria y se pierde ante reinicios o réplicas no compartidas.
+        <div class="evidence">incident_chat.py:13-14,46-59,81-120 · api/main.py:181-210</div>
+      </div>
+
+      <div class="table-wrap" style="margin-top:1rem">
+        <table>
+          <caption>Tools expuestas por el servidor MCP y uso efectivo</caption>
+          <thead><tr><th>Tool</th><th>Protección</th><th>Uso efectivo</th></tr></thead>
+          <tbody>
+            <tr><td><code>get_gallery_status</code></td><td>Sin token interno por tool</td><td>Agente: visitante y personal</td></tr>
+            <tr><td><code>create_incident</code></td><td>JWT en API/workflow + token MCP interno</td><td>Chat confirmado y formulario directo</td></tr>
+            <tr><td><code>get_incident</code></td><td>JWT staff + token MCP interno</td><td>Consulta conversacional por ID</td></tr>
+            <tr><td><code>get_accessibility_info</code></td><td>Sin token interno por tool</td><td><strong>No conectada</strong> al cliente ni al agente</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="contratos" aria-labelledby="titulo-contratos">
+      <p class="kicker">API pública</p>
+      <h2 id="titulo-contratos">Contratos de entrada y salida</h2>
+      <div class="grid grid-2">
+        <article>
+          <h3>Entrada: <code>POST /api/v1/chat</code></h3>
+          <pre><code>{
+  "message": "¿Qué puedo ver en la Sala 4?",
+  "user_role": "visitor",
+  "session_id": "demo",
+  "language": "es",
+  "location_hint": "Sala 4",
+  "metadata": { "client": "streamlit" }
+}</code></pre>
+          <p><strong>Límites:</strong> mensaje 1–4000 caracteres; sesión 1–128; ubicación hasta 256; metadata JSON hasta 8192 bytes.</p>
+        </article>
+        <article>
+          <h3>Salida: <code>ChatResponse</code></h3>
+          <pre><code>{
+  "answer": "La Sala 4...",
+  "trace_id": "uuid",
+  "sources": [{
+    "title": "Egipto: Sala 4",
+    "source": "data/raw/spanish/...",
+    "url": "https://...",
+    "chunk_id": "egipto_sala_4-1",
+    "score": 0.78,
+    "excerpt": "..."
+  }],
+  "tool_calls": [],
+  "confidence": 0.78,
+  "needs_clarification": false,
+  "safety_notes": [],
+  "runtime": {
+    "retrieval": { "active": true, "mode": "chroma", "detail": "..." },
+    "reranking": { "active": true, "mode": "huggingface_cross_encoder", "detail": "..." },
+    "generation": { "active": true, "mode": "gemini", "detail": "..." },
+    "tracing": { "active": true, "mode": "langsmith", "detail": "..." }
+  }
+}</code></pre>
+        </article>
+      </div>
+      <p class="evidence">Contrato: src/british_museum_agent/domain/models.py:15-82</p>
+
+      <details>
+        <summary>Otros endpoints relevantes</summary>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Endpoint</th><th>Función</th><th>Control</th></tr></thead>
+            <tbody>
+              <tr><td><code>POST /api/v1/auth/login</code></td><td>Entrega JWT staff</td><td>bcrypt + JWT HS256</td></tr>
+              <tr><td><code>POST /api/v1/incidents</code></td><td>Crea incidente mediante MCP</td><td>Bearer JWT; sin nonce</td></tr>
+              <tr><td><code>GET /api/v1/galleries/{id}/status</code></td><td>Estado de sala</td><td>Público</td></tr>
+              <tr><td><code>GET /api/v1/artworks/{id}</code></td><td>Respuesta placeholder</td><td>No hay catálogo operativo</td></tr>
+              <tr><td><code>GET /api/v1/health</code></td><td>Readiness detallada</td><td>Devuelve 503 degradado</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </section>
+
+    <section id="ia-observabilidad" aria-labelledby="titulo-ia">
+      <p class="kicker">Generación, trazas y degradación</p>
+      <h2 id="titulo-ia">Gemini, LangChain, LangSmith y fallbacks</h2>
+      <div class="grid grid-3">
+        <article class="card">
+          <h3>Gemini</h3>
+          <p>Modelo configurado: <code>gemini-2.5-flash</code> mediante <code>ChatGoogleGenerativeAI</code>, con dos reintentos.</p>
+          <p>El prompt exige español, evidencia, citas por título y prioridad para datos MCP.</p>
+        </article>
+        <article class="card">
+          <h3>LangChain</h3>
+          <p>Se usa <code>langchain_core.messages</code> y el adaptador de Gemini.</p>
+          <p><strong>No</strong> hay una chain LCEL que coordine retrieval, tools y generación: eso lo hace LangGraph más código Python.</p>
+        </article>
+        <article class="card">
+          <h3>LangSmith</h3>
+          <p>Se habilita si tracing está activo y hay API key. Grafo y Gemini envían run name, tags, rol, idioma y trace ID.</p>
+          <p>No se verificó entrega externa de trazas durante esta auditoría.</p>
+        </article>
+      </div>
+
+      <h3>Escalera de fallbacks</h3>
+      <ol>
+        <li>Chroma no inicia o falla el warmup → índice léxico JSON.</li>
+        <li>Falla el reranker → conserva el ranking vectorial.</li>
+        <li>Falla Gemini o falta la clave → respuesta local basada en fragmentos.</li>
+        <li>No hay evidencia ≥ 0,25 → mensaje de aclaración sin invocar generación.</li>
+        <li>Falla MCP → tool call con error y respuesta explícitamente degradada.</li>
+      </ol>
+      <div class="callout critical">
+        <strong>Observabilidad incompleta:</strong> hay trazas condicionales de LangSmith y latencia por tool, pero no hay Arize ni métricas de throughput, alucinaciones, costos o recursos exigidas por el enunciado.
+      </div>
+      <p class="evidence">answer_generator.py:80-205 · config.py:48-54 · agent/graph.py:69-88,324-350</p>
+    </section>
+
+    <section id="docker" aria-labelledby="titulo-docker">
+      <p class="kicker">Ejecución empaquetada</p>
+      <h2 id="titulo-docker">Los tres servicios Docker Compose</h2>
+      <div class="grid grid-3">
+        <article class="card">
+          <h3>1. <code>ui</code></h3>
+          <p>Streamlit en puerto 8501. Sólo necesita la URL del backend y espera a que FastAPI esté saludable.</p>
+        </article>
+        <article class="card">
+          <h3>2. <code>backend</code></h3>
+          <p>FastAPI en puerto 8000. Ejecuta ingesta léxica, ingesta Chroma y luego Uvicorn. Monta corpus, índices, SQLite y caché Hugging Face.</p>
+        </article>
+        <article class="card">
+          <h3>3. <code>mcp-server</code></h3>
+          <p>Servidor MCP streamable HTTP en puerto 8001. Inicializa SQLite y expone las tools operativas.</p>
+        </article>
+      </div>
+      <div class="callout">
+        <strong>Alcance real:</strong> Docker Compose organiza servicios y healthchecks. No hay manifiestos Kubernetes, funciones serverless ni scripts de escalado.
+        <div class="evidence">Evidencia: docker-compose.yml:1-79</div>
+      </div>
+    </section>
+
+    <section id="matriz" aria-labelledby="titulo-matriz">
+      <p class="kicker">Evaluación contra el entregable</p>
+      <h2 id="titulo-matriz">Matriz detallada de cumplimiento</h2>
+      <p class="section-lead">Los estados combinan evidencia estática con verificaciones locales previas: 51 tests aprobados, tres servicios Compose saludables y flujos principales probados en localhost. El despliegue en una plataforma real y los servicios externos se evalúan por separado.</p>
+      <div class="table-wrap">
+        <table>
+          <caption>Enunciado → evidencia → estado</caption>
+          <thead>
+            <tr><th>Requisito</th><th>Evidencia verificable</th><th class="status-cell">Estado</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Componentes modulares separados</td><td><span class="evidence">enunciado.md:71-74</span><br>Existen retrieval, agent, generation y adapters_mcp; ranking está dentro de retrieval y no hay observabilidad/despliegue.</td><td><span class="badge partial">△ Parcial</span></td></tr>
+            <tr><td>README general y ejecución</td><td><span class="evidence">README.md:5-27,56-120</span><br>Arquitectura, configuración, local, Compose y API.</td><td><span class="badge ok">✓ Cumple</span></td></tr>
+            <tr><td>Base vectorial semántica</td><td><span class="evidence">vector_store.py:82-189 · index_manifest.json:2-8</span><br>Chroma persistente con colección e índice materializado.</td><td><span class="badge ok">✓ Cumple</span></td></tr>
+            <tr><td>Re-ranker</td><td><span class="evidence">vector_store.py:54-71,191-212</span><br>Cross-encoder multilingüe y combinación 25/75.</td><td><span class="badge ok">✓ Cumple</span></td></tr>
+            <tr><td>Orquestación LangChain</td><td><span class="evidence">answer_generator.py:7,92-140</span><br>Mensajes y Gemini usan LangChain; el pipeline completo no es una chain.</td><td><span class="badge partial">△ Parcial</span></td></tr>
+            <tr><td>Agente cíclico LangGraph</td><td><span class="evidence">agent/graph.py:101-145</span><br>StateGraph real, pero todas las rutas terminan en END sin ciclos.</td><td><span class="badge partial">△ Parcial</span></td></tr>
+            <tr><td>MCP seguro y conforme</td><td><span class="evidence">client.py:70-97 · server.py:28-39,69-103</span><br>SDK MCP, token en header y comparación constante.</td><td><span class="badge ok">✓ Cumple</span></td></tr>
+            <tr><td>Kubernetes y/o serverless</td><td><span class="evidence">docker-compose.yml:1-79</span><br>Sólo existe Docker Compose.</td><td><span class="badge no">✕ No cumple</span></td></tr>
+            <tr><td>Automatización de despliegue y escalado</td><td><span class="evidence">docker-compose.yml:1-79 · Makefile:19-23</span><br>Levanta y baja servicios; no automatiza escalado.</td><td><span class="badge partial">△ Parcial</span></td></tr>
+            <tr><td>LangSmith y Arize</td><td><span class="evidence">config.py:31-54 · requirements.txt:12-18</span><br>LangSmith está integrado; Arize está ausente.</td><td><span class="badge partial">△ Parcial</span></td></tr>
+            <tr><td>Latencia, throughput, alucinaciones y recursos</td><td><span class="evidence">domain/models.py:24-29 · client.py:76-91</span><br>Sólo se registra latencia de tools.</td><td><span class="badge no">✕ No cumple</span></td></tr>
+            <tr><td>Decisiones arquitectónicas</td><td><span class="evidence">docs/adr/ADR-001-architecture.md:1-13</span><br>ADR aceptado sobre arquitectura hexagonal.</td><td><span class="badge ok">✓ Cumple</span></td></tr>
+            <tr><td>Métricas documentadas</td><td>No existe definición operable ni documento de métricas.</td><td><span class="badge no">✕ No cumple</span></td></tr>
+            <tr><td>Despliegue y monitoreo documentados</td><td><span class="evidence">README.md:100-120</span><br>Compose está documentado; monitoreo operativo no.</td><td><span class="badge partial">△ Parcial</span></td></tr>
+            <tr><td>Repositorio funcional y modular</td><td><strong>Entorno local: verificado.</strong> Suite actual con 51 tests aprobados; Compose con ui/backend/mcp-server saludable; RAG, UI, alta y consulta de incidentes probados en localhost.<br><strong>Despliegue real: no validado</strong>; esa brecha se refleja por separado en Kubernetes/serverless, observabilidad y scripts de plataforma.</td><td><span class="badge ok">✓ Cumple local</span></td></tr>
+            <tr><td>Observabilidad correctamente instrumentada</td><td><span class="evidence">agent/graph.py:69-88,342-350</span><br>Tracing condicional, sin Arize ni métricas requeridas.</td><td><span class="badge partial">△ Parcial</span></td></tr>
+            <tr><td>Scripts listos para despliegue real</td><td><span class="evidence">Dockerfile.backend:1-16 · docker-compose.yml:1-79</span><br>Artefactos Docker presentes; faltan plataforma y validación real.</td><td><span class="badge partial">△ Parcial</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="brechas" aria-labelledby="titulo-brechas">
+      <p class="kicker">Camino hacia cumplimiento completo</p>
+      <h2 id="titulo-brechas">Brechas priorizadas</h2>
+      <div class="priority">
+        <div class="priority-num">1</div><div><h3>Convertir el DAG en un ciclo controlado</h3><p>Agregar evaluación de respuesta y una arista de retorno con máximo de iteraciones. Debe quedar claro cuándo reconsulta, cuándo usa otra tool y cuándo termina.</p></div>
+        <div class="priority-num">2</div><div><h3>Completar observabilidad</h3><p>Integrar Arize o justificar una alternativa, medir latencia total, throughput, errores, costo/tokens, calidad factual y recursos; documentar umbrales y alertas.</p></div>
+        <div class="priority-num">3</div><div><h3>Agregar despliegue de plataforma</h3><p>Crear manifiestos Kubernetes o una opción serverless, probes, secrets, límites de CPU/memoria, autoscaling y procedimiento de rollback.</p></div>
+        <div class="priority-num">4</div><div><h3>Alinear la orquestación LangChain</h3><p>Modelar al menos la preparación de prompt y generación como Runnable/chain observable, o documentar explícitamente por qué LangGraph reemplaza esa función.</p></div>
+        <div class="priority-num">5</div><div><h3>Endurecer confirmaciones distribuidas</h3><p>Persistir pendientes y nonces con consumo atómico; decidir si el formulario directo debe exigir confirmación equivalente.</p></div>
+        <div class="priority-num">6</div><div><h3>Cerrar diferencias entre código y documentación</h3><p>Conectar o retirar <code>get_accessibility_info</code>, completar el catálogo real, actualizar README/C4 y documentar qué corpus sí se indexa.</p></div>
+      </div>
+    </section>
+
+    <section id="realidad" aria-labelledby="titulo-realidad">
+      <p class="kicker">Honestidad arquitectónica</p>
+      <h2 id="titulo-realidad">Implementación real versus intención</h2>
+      <div class="grid grid-2">
+        <article class="card">
+          <h3>Está realmente conectado</h3>
+          <ul>
+            <li>Streamlit → FastAPI → LangGraph.</li>
+            <li>Chroma con 13 chunks y fallback léxico.</li>
+            <li>Embeddings y cross-encoder locales.</li>
+            <li>Gemini con fallback local explícito.</li>
+            <li>MCP streamable HTTP sobre SQLite.</li>
+            <li>JWT staff y confirmación conversacional.</li>
+            <li>LangSmith condicional y runtime status.</li>
+            <li>Docker Compose con tres servicios.</li>
+          </ul>
+        </article>
+        <article class="card">
+          <h3>Es intención, placeholder o deriva</h3>
+          <ul>
+            <li><code>/artworks/{id}</code> no tiene catálogo real.</li>
+            <li><code>get_accessibility_info</code> existe, pero el agente no puede llamarla.</li>
+            <li>El C4 menciona inventario y tours sin operaciones ejecutables.</li>
+            <li>Una docstring antigua dice que MCP llegará “later”, aunque ya existe cliente/servidor real.</li>
+            <li>README omite <code>get_incident</code> al listar tools.</li>
+            <li>No existen ciclos, Arize, Kubernetes, serverless ni métricas completas.</li>
+          </ul>
+        </article>
+      </div>
+      <div class="callout good">
+        <strong>Cómo presentarlo bien:</strong> no digas “cumple todo”. Decí: “La base de producción está implementada y es demostrable; la auditoría identifica con precisión qué falta para satisfacer el enunciado completo”. Eso muestra criterio de ingeniería, no debilidad.
+      </div>
+    </section>
+
+    <section id="guion" aria-labelledby="titulo-guion">
+      <p class="kicker">Presentación</p>
+      <h2 id="titulo-guion">Guion oral de 3 minutos</h2>
+      <div class="script">
+        <p><span class="time">0:00–0:30 · Problema y arquitectura.</span> “Este proyecto es un asistente en español para visitantes y personal del British Museum. La interfaz está en Streamlit, FastAPI valida los contratos y la identidad, y LangGraph decide si recuperar conocimiento, consultar una operación del museo o generar una respuesta.”</p>
+        <p><span class="time">0:30–1:10 · RAG y ranking.</span> “El RAG actual indexa 13 fragmentos del corpus español en Chroma. Usa embeddings multilingües y recupera diez candidatos. Después, un cross-encoder los reordena: el score final pesa 25% la similitud vectorial y 75% el reranker. Los cuatro mejores pasan al agente y sólo se consideran evidencia cuando el primero supera 0,25.”</p>
+        <p><span class="time">1:10–1:45 · MCP y seguridad.</span> “Para datos cambiantes, como el estado de una sala, el agente usa tools MCP respaldadas por SQLite. El rol staff no se confía al navegador: requiere un JWT válido. Las altas conversacionales de incidentes además necesitan una confirmación con nonce dentro de cinco minutos.”</p>
+        <p><span class="time">1:45–2:20 · Gemini y resiliencia.</span> “Gemini 2.5 Flash redacta usando sólo el contexto recuperado y los datos MCP. Si Chroma falla se usa búsqueda léxica; si falla el reranker se conserva el orden vectorial; si falla Gemini se responde con un fallback local. La respuesta siempre informa fuentes, scores, tools y componentes activos.”</p>
+        <p><span class="time">2:20–3:00 · Evaluación honesta.</span> “La solución cumple retrieval vectorial, reranking, MCP, documentación arquitectónica y una base de despliegue con tres servicios. No obstante, el LangGraph actual es acíclico, falta Arize y métricas completas, y no hay Kubernetes ni serverless. Por eso la evaluación correcta es cumplimiento parcial, con una hoja de ruta concreta para cerrar esas brechas.”</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p><strong>British Museum Agent · Guía pedagógica basada en auditoría estática y verificaciones locales previas</strong></p>
+    <p>El proyecto fue verificado en localhost con tests, Docker Compose y flujos end-to-end. Este documento no afirma validación de servicios externos ni de un despliegue real.</p>
+  </footer>
+</body>
+</html>

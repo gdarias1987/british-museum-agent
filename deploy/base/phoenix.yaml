@@ -1,0 +1,107 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: phoenix
+  labels:
+    app.kubernetes.io/name: phoenix
+    app.kubernetes.io/component: observability
+  annotations:
+    deployment.british-museum-agent/scaling-guard: local-persistence-is-single-writer
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: phoenix
+      app.kubernetes.io/component: observability
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: phoenix
+        app.kubernetes.io/component: observability
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: phoenix
+          image: arizephoenix/phoenix:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 6006
+              protocol: TCP
+          env:
+            - name: PHOENIX_WORKING_DIR
+              value: /mnt/data
+            - name: HOME
+              value: /tmp
+          startupProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 60
+          readinessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 2Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: phoenix-data
+              mountPath: /mnt/data
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: phoenix-data
+          persistentVolumeClaim:
+            claimName: phoenix-data
+        - name: tmp
+          emptyDir:
+            sizeLimit: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: phoenix
+  labels:
+    app.kubernetes.io/name: phoenix
+    app.kubernetes.io/component: observability
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: phoenix
+    app.kubernetes.io/component: observability
+  ports:
+    - name: http
+      port: 6006
+      targetPort: http
+      protocol: TCP

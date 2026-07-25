@@ -1,0 +1,106 @@
+services:
+  phoenix:
+    image: ${PHOENIX_IMAGE:-arizephoenix/phoenix:latest}
+    environment:
+      PHOENIX_WORKING_DIR: /mnt/data
+    ports:
+      - "6006:6006"
+      - "4317:4317"
+    volumes:
+      - phoenix-data:/mnt/data
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:6006/healthz', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    environment:
+      SQLITE_PATH: ./data/sqlite/app.db
+      STAFF_DEMO_USERNAME: ${STAFF_DEMO_USERNAME:?STAFF_DEMO_USERNAME is required}
+      STAFF_DEMO_PASSWORD: ${STAFF_DEMO_PASSWORD:?STAFF_DEMO_PASSWORD is required}
+      MCP_INTERNAL_TOKEN: ${MCP_INTERNAL_TOKEN:?MCP_INTERNAL_TOKEN is required}
+      MCP_TRANSPORT: streamable-http
+      MCP_HOST: 0.0.0.0
+      MCP_PORT: 8001
+      MCP_PATH: /mcp
+    command:
+      - sh
+      - -c
+      - python scripts/seed_db.py && python -m british_museum_agent.adapters_mcp.server
+    volumes:
+      - ./data/sqlite:/app/data/sqlite
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8001/health', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    env_file:
+      - .env
+    environment:
+      MCP_SERVER_URL: http://mcp-server:8001/mcp
+      PHOENIX_ENABLED: ${PHOENIX_ENABLED:-true}
+      PHOENIX_PROJECT_NAME: ${PHOENIX_PROJECT_NAME:-british-museum-agent}
+      PHOENIX_COLLECTOR_ENDPOINT: ${PHOENIX_COLLECTOR_ENDPOINT:-http://phoenix:4317}
+      PHOENIX_API_KEY: ${PHOENIX_API_KEY:-}
+      OPENINFERENCE_HIDE_INPUTS: "true"
+      OPENINFERENCE_HIDE_OUTPUTS: "true"
+    command:
+      - sh
+      - -c
+      - python scripts/ingest.py && python scripts/ingest_chroma.py && uvicorn british_museum_agent.api.main:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data/raw:/app/data/raw
+      - ./data/processed:/app/data/processed
+      - ./data/chroma:/app/data/chroma
+      - ./data/sqlite:/app/data/sqlite
+      - huggingface-cache:/root/.cache/huggingface
+    depends_on:
+      mcp-server:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 120s
+
+  ui:
+    build:
+      context: .
+      dockerfile: Dockerfile.streamlit
+    environment:
+      STREAMLIT_BACKEND_URL: http://backend:8000
+    ports:
+      - "8501:8501"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  huggingface-cache:
+  phoenix-data:

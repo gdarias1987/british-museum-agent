@@ -1,0 +1,11 @@
+C4Context
+  title British Museum Agent - System Context
+  Person(visitor, "Visitante", "Consulta obras, recorridos y accesibilidad")
+  Person(staff, "Staff", "Opera consultas internas e incidencias")
+  System(agent, "British Museum Agent", "Asistente IA con RAG, herramientas MCP y observabilidad")
+  System_Ext(corpus, "Corpus documental", "Catálogo, mapas, recursos de visita y publicaciones")
+  System_Ext(museum_ops, "Sistemas operativos simulados", "Inventario, salas, tours e incidencias")
+  Rel(visitor, agent, "Consulta en lenguaje natural")
+  Rel(staff, agent, "Consulta y ejecuta acciones autorizadas")
+  Rel(agent, corpus, "Recupera contexto")
+  Rel(agent, museum_ops, "Ejecuta herramientas MCP")

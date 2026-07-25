@@ -11,7 +11,7 @@
    - MCP: `http://localhost:8001/health`
    - Phoenix: `http://localhost:6006`
 
-El backend ejecuta la ingesta y la indexaciÃ³n Chroma durante el arranque. La primera ejecuciÃ³n puede tener cold start por descarga/carga del modelo de embeddings. Los datos no quedan en la imagen: Compose monta `data/raw`, `data/processed`, `data/chroma` y `data/sqlite`; Phoenix y la cachÃ© de Hugging Face usan volÃºmenes nombrados.
+El backend ejecuta la ingesta y la indexaciÃ³n Chroma durante el arranque. La primera ejecuciÃ³n puede tener cold start por descarga/carga del modelo de embeddings. Si se reutiliza un índice local antiguo o inconsistente, reconstruirlo con `docker compose run --rm --no-deps backend python scripts/ingest_chroma.py --force` y volver a levantar el backend. Los datos no quedan en la imagen: Compose monta `data/raw`, `data/processed`, `data/chroma` y `data/sqlite`; Phoenix y la cachÃ© de Hugging Face usan volÃºmenes nombrados.
 
 Los contenedores tienen healthchecks y dependencias ordenadas: MCP debe estar saludable antes del backend y el backend antes de la UI.
 

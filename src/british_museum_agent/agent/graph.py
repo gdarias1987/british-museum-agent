@@ -180,7 +180,7 @@ class MuseumAgentGraph:
                 "tool_calls": [],
                 "confidence": 0.0,
                 "needs_clarification": True,
-                "safety_notes": ["La consulta vacÃƒÂ­a fue rechazada antes de recuperar informaciÃƒÂ³n."],
+                "safety_notes": ["La consulta vacía fue rechazada antes de recuperar información."],
                 "runtime": self._runtime_status(generation_status),
             }
         return {
@@ -330,7 +330,7 @@ class MuseumAgentGraph:
             _retrieval_safety_note(retrieval_status),
         ]
         if any(call.status == "error" for call in state.get("tool_calls", [])):
-            safety_notes.append("MCP no estuvo disponible o no encontrÃƒÂ³ la sala; la respuesta lo trata como fallback.")
+            safety_notes.append("MCP no estuvo disponible o no encontró la sala; la respuesta lo trata como fallback.")
         return {
             **state,
             "answer": result.answer,
@@ -346,7 +346,7 @@ class MuseumAgentGraph:
             **state,
             "answer": (
                 "No tengo evidencia suficiente en el corpus cargado para responder con confianza. "
-                "ProbÃƒÂ¡ mencionar una sala, perÃƒÂ­odo, artista, objeto o necesidad de accesibilidad."
+                "Probá mencionar una sala, período, artista, objeto o necesidad de accesibilidad."
             ),
             "sources": [],
             "tool_calls": [],
@@ -485,8 +485,8 @@ class MuseumAgentGraph:
 
 def _retrieval_safety_note(status) -> str:
     if status.backend == "chroma" and status.reranker_active:
-        return "Contexto recuperado desde ChromaDB y reordenado con un cross-encoder multilingÃƒÂ¼e."
-    return f"Modo de recuperaciÃƒÂ³n informado explÃƒÂ­citamente: {status.retrieval_detail}"
+        return "Contexto recuperado desde ChromaDB y reordenado con un cross-encoder multilingüe."
+    return f"Modo de recuperación informado explícitamente: {status.retrieval_detail}"
 
 
 def _detect_operational_gallery_status(

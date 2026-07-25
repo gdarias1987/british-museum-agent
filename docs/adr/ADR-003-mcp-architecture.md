@@ -1,0 +1,32 @@
+# ADR-003: Arquitectura MCP (Model Context Protocol) Server + Client
+
+- **Fecha**: 2026-07-25
+- **Estado**: Aceptado
+- **Contexto**: El backend necesita ejecutar operaciones operativas del museo (consultar estado de salas, accesibilidad, crear y consultar incidentes) que están respaldadas por SQLite. Para mantener la separación de responsabilidades y evitar que el backend acceda directamente a SQLite para operaciones de escritura, se decidió implementar un servidor de herramientas independiente siguiendo el protocolo MCP (Model Context Protocol). Se requería un mecanismo de autenticación interna entre backend y MCP que no dependa de JWT de usuario ni de secrets compartidos en argumentos de herramientas.
+- **Decisión**: Se implementó un servidor MCP con `mcp[fastmcp]` (FastMCP) que expone tres tools sobre transporte streamable HTTP: `get_gallery_status`, `get_accessibility_info` (públicas internamente), `create_incident` y `get_incident` (protegidas por token interno HMAC). El cliente MCP (`MCPMuseumTools`) en el backend se comunica vía `streamablehttp_client` con el header `X-MCP-Internal-Token` para autenticación. El token se verifica en el servidor con `hmac.compare_digest` y nunca aparece en los argumentos de las tools. El servidor corre en un proceso/container separado (`mcp-server`) con su propia health check en `/health` que reporta estado de SQLite y de la configuración de autenticación interna.
+- **Consecuencias**:
+  - **Positivas**:
+    - Separación clara de concerns: el backend orquesta, MCP ejecuta operaciones sobre SQLite.
+    - El backend no necesita acceso directo a SQLite para escritura de incidentes; todo pasa por el contrato MCP.
+    - Transporte streamable HTTP permite requests largos sin bloquear el pool de conexiones.
+    - Autenticación interna con HMAC y header dedicado evita exponer el token en logs o argumentos de herramientas.
+    - FastMCP simplifica la definición de tools con type hints y manejo de contexto.
+    - Health check unificado permite al backend saber si MCP está listo antes de iniciar.
+    - El servidor MCP puede escalarse independientemente del backend.
+  - **Negativas**:
+    - Latencia adicional de red (HTTP local) comparado con acceso directo a SQLite.
+    - Complejidad operativa: un container adicional que debe estar saludable antes que el backend.
+    - El token interno debe generarse, compartirse via `.env` y rotarse periódicamente.
+    - Las tools protegidas requieren que el contexto (`Context`) de FastMCP esté disponible, lo que ata la verificación al ciclo de vida de la request.
+- **Alternativas consideradas**:
+  - **Acceso directo a SQLite desde el backend**: Se descartó porque rompe la separación de responsabilidades y mezcla lógica operativa con lógica de retrieval/generación.
+  - **gRPC**: Sobredimensionado para 3-4 tools; MCP da un protocolo estándar para herramientas de agentes.
+  - **API REST independiente**: Habría requerido definir endpoints, autenticación y documentación desde cero. MCP ya define el contrato tool-call.
+  - **MCP con transporte stdio**: Se evaluó pero descartó porque dificulta la ejecución en containers separados y el health check HTTP.
+  - **Firmas HMAC en body de la tool**: Se descartó porque el token quedaría visible en logs de la tool y en la traza de LangSmith/Phoenix.
+- **Referencias**:
+  - `src/british_museum_agent/adapters_mcp/server.py` — servidor FastMCP con tools y verificación HMAC
+  - `src/british_museum_agent/adapters_mcp/client.py` — `MCPMuseumTools` y `streamablehttp_client`
+  - `src/british_museum_agent/config.py` — `mcp_server_url`, `mcp_internal_token`
+  - `docker-compose.yml` — servicio `mcp-server` con healthcheck
+  - `pyproject.toml` — dependencia `mcp==1.28.1`

@@ -159,9 +159,9 @@ def health(
             "mcp": {
                 "ready": mcp_ready,
                 "detail": (
-                    "El servicio MCP respondiÃƒÂ³ correctamente."
+                    "El servicio MCP respondió correctamente."
                     if mcp_ready
-                    else "El servicio MCP no estÃƒÂ¡ disponible o no superÃƒÂ³ su health check."
+                    else "El servicio MCP no está disponible o no superó su health check."
                 ),
             },
         },
@@ -188,7 +188,7 @@ def login(
     settings: Settings = Depends(get_settings),
 ) -> LoginResponse:
     if not repo.validate_staff_credentials(request.username, request.password):
-        raise HTTPException(status_code=401, detail="Credenciales de personal invÃƒÂ¡lidas")
+        raise HTTPException(status_code=401, detail="Credenciales de personal inválidas")
     return LoginResponse(
         access_token=create_staff_access_token(request.username, settings),
     )
@@ -213,7 +213,7 @@ def get_artwork(inventory_id: str) -> dict:
     return {
         "inventory_id": inventory_id,
         "status": "placeholder",
-        "message": "El adaptador de catÃƒÂ¡logo estÃƒÂ¡ declarado, pero todavÃƒÂ­a no tiene una fuente operativa.",
+        "message": "El adaptador de catálogo está declarado, pero todavía no tiene una fuente operativa.",
     }
 
 
@@ -224,7 +224,7 @@ def get_gallery_status(
 ) -> GalleryStatus:
     gallery = repo.get_gallery_status(gallery_id)
     if gallery is None:
-        raise HTTPException(status_code=404, detail="No se encontrÃƒÂ³ la sala o SQLite no estÃƒÂ¡ listo")
+        raise HTTPException(status_code=404, detail="No se encontró la sala o SQLite no está listo")
     return GalleryStatus(**gallery)
 
 
@@ -242,19 +242,19 @@ def create_incident(
     except MCPConfigurationError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="La autenticaciÃƒÂ³n interna de MCP no estÃƒÂ¡ configurada",
+            detail="La autenticación interna de MCP no está configurada",
         ) from exc
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="El servicio MCP no estÃƒÂ¡ disponible",
+            detail="El servicio MCP no está disponible",
         ) from exc
 
     error = incident.get("error")
     if error == "gallery_not_found":
-        raise HTTPException(status_code=404, detail="No se encontrÃƒÂ³ la sala")
+        raise HTTPException(status_code=404, detail="No se encontró la sala")
     if error == "invalid_priority":
-        raise HTTPException(status_code=422, detail="La prioridad del incidente no es vÃƒÂ¡lida")
+        raise HTTPException(status_code=422, detail="La prioridad del incidente no es válida")
     if error:
-        raise HTTPException(status_code=502, detail="MCP rechazÃƒÂ³ el incidente")
+        raise HTTPException(status_code=502, detail="MCP rechazó el incidente")
     return IncidentResponse(**incident)

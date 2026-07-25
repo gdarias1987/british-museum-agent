@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Guía pedagógica y auditoría técnica del British Museum Agent.">
+  <meta name="description" content="GuÃƒÂ­a pedagÃƒÂ³gica y auditorÃƒÂ­a tÃƒÂ©cnica del British Museum Agent.">
   <link rel="icon" href="data:,">
-  <title>Cómo funciona el British Museum Agent</title>
+  <title>CÃƒÂ³mo funciona el British Museum Agent</title>
   <style>
     :root {
       color-scheme: light;
@@ -203,7 +203,7 @@
     .flow-node:nth-child(5) { border-color: var(--violet); background: var(--violet-soft); }
     .flow-node:last-child { border-color: var(--green); background: var(--green-soft); }
     .flow-node:not(:last-child)::after {
-      content: "→";
+      content: "Ã¢â€ â€™";
       position: absolute;
       top: 50%;
       right: -1.45rem;
@@ -339,11 +339,11 @@
   <a class="skip-link" href="#contenido">Saltar al contenido principal</a>
 
   <header class="hero">
-    <span class="eyebrow">Guía pedagógica · implementación auditada</span>
-    <h1>Cómo funciona el British Museum Agent</h1>
-    <p>Una explicación para entender el sistema, demostrarlo en la entrega y hablar con precisión sobre lo que realmente está implementado —incluidas sus brechas.</p>
-    <div class="hero-meta" aria-label="Características principales">
-      <span>RAG en español</span>
+    <span class="eyebrow">GuÃƒÂ­a pedagÃƒÂ³gica Ã‚Â· implementaciÃƒÂ³n auditada</span>
+    <h1>CÃƒÂ³mo funciona el British Museum Agent</h1>
+    <p>Una explicaciÃƒÂ³n para entender el sistema, demostrarlo en la entrega y hablar con precisiÃƒÂ³n sobre lo que realmente estÃƒÂ¡ implementado Ã¢â‚¬â€incluidas sus brechas.</p>
+    <div class="hero-meta" aria-label="CaracterÃƒÂ­sticas principales">
+      <span>RAG en espaÃƒÂ±ol</span>
       <span>LangGraph</span>
       <span>Gemini</span>
       <span>MCP + SQLite</span>
@@ -351,7 +351,7 @@
     </div>
   </header>
 
-  <nav class="site-nav" aria-label="Índice de contenidos">
+  <nav class="site-nav" aria-label="ÃƒÂndice de contenidos">
     <ul>
       <li><a href="#resumen">Resumen</a></li>
       <li><a href="#arquitectura">Arquitectura</a></li>
@@ -364,429 +364,135 @@
       <li><a href="#docker">Docker</a></li>
       <li><a href="#matriz">Matriz</a></li>
       <li><a href="#brechas">Brechas</a></li>
-      <li><a href="#realidad">Real vs. intención</a></li>
+      <li><a href="#realidad">Real vs. intenciÃƒÂ³n</a></li>
       <li><a href="#guion">Guion oral</a></li>
     </ul>
   </nav>
 
   <main id="contenido">
-    <section id="resumen" aria-labelledby="titulo-resumen">
-      <p class="kicker">La respuesta corta</p>
-      <h2 id="titulo-resumen">Resumen ejecutivo</h2>
-      <p class="section-lead">El proyecto es un asistente en español con recuperación semántica, reranking, generación con Gemini y operaciones protegidas por MCP. La arquitectura es real, modular y fue verificada localmente; el cumplimiento global del enunciado sigue siendo parcial porque algunas capacidades pedidas no existen todavía.</p>
+  <section id="resumen" aria-labelledby="titulo-resumen">
+    <p class="kicker">La respuesta corta</p>
+    <h2 id="titulo-resumen">Sí: la base solicitada quedó implementada y verificada</h2>
+    <p class="section-lead">El sistema ejecuta un RAG en español con ChromaDB, embeddings multilingües, reranking Hugging Face, LangGraph, MCP, Gemini y LangSmith. Phoenix OSS agrega trazas locales; el backend expone métricas y existe una ruta Kubernetes preparada.</p>
+    <div class="grid grid-3">
+      <article class="card stat"><strong>51 passed</strong>Suite de tests local aprobada.</article>
+      <article class="card stat"><strong>177 checks</strong>Validador estático Kubernetes aprobado.</article>
+      <article class="card stat"><strong>4 servicios</strong>Compose saludable: UI, API, MCP y Phoenix.</article>
+    </div>
+    <div class="grid grid-2" style="margin-top:1rem">
+      <div class="callout good"><strong>Verificado end-to-end</strong><p>La consulta real respondió con Chroma, reranker, Gemini, LangSmith activo y una traza de proyecto visible en Phoenix local.</p></div>
+      <div class="callout critical"><strong>Límites honestos</strong><p>AX Cloud no está configurado, no se incluye Prometheus/Grafana y Kubernetes no fue aplicado contra un cluster real. La calidad factual todavía usa proxies.</p></div>
+    </div>
+  </section>
 
-      <div class="grid grid-3" aria-label="Indicadores principales">
-        <article class="card stat"><strong>13</strong>chunks españoles persistidos en Chroma y en el fallback léxico.</article>
-        <article class="card stat"><strong>10 → 4</strong>candidatos vectoriales iniciales y resultados finales entregados al generador.</article>
-        <article class="card stat"><strong>25 / 75</strong>peso del score vectorial frente al score del cross-encoder.</article>
-      </div>
+  <section id="arquitectura" aria-labelledby="titulo-arquitectura">
+    <p class="kicker">De la interfaz a la respuesta</p>
+    <h2 id="titulo-arquitectura">Arquitectura real</h2>
+    <p class="section-lead">Streamlit es la interfaz. FastAPI valida contratos e identidad. LangGraph coordina el flujo. RAG aporta evidencia histórica, MCP aporta datos operativos y Gemini redacta.</p>
+    <div class="flow" role="img" aria-label="Streamlit envía la consulta a FastAPI; FastAPI llama a LangGraph; LangGraph usa Chroma y MCP; Gemini genera la respuesta; se devuelven fuentes y métricas.">
+      <div class="flow-node"><strong>1. Streamlit</strong><small>Consulta, ubicación y sesión</small></div>
+      <div class="flow-node"><strong>2. FastAPI</strong><small>Pydantic + JWT opcional</small></div>
+      <div class="flow-node"><strong>3. LangGraph</strong><small>Estado, decisiones y ciclo acotado</small></div>
+      <div class="flow-node"><strong>4. Evidencia</strong><div class="parallel"><span>Chroma + reranker</span><span>MCP + SQLite</span></div></div>
+      <div class="flow-node"><strong>5. Gemini</strong><small>Respuesta con fuentes o fallback seguro</small></div>
+    </div>
+    <div class="grid grid-3" style="margin-top:1rem">
+      <article class="card"><h3>Backend</h3><p>FastAPI en <code>8000</code>; expone chat, health, métricas, login e incidentes.</p></article>
+      <article class="card"><h3>MCP</h3><p>Servidor Streamable HTTP en <code>8001</code>; tools operativas protegidas por token.</p></article>
+      <article class="card"><h3>UI</h3><p>Streamlit en <code>8501</code>; visitante sin login y personal con JWT.</p></article>
+    </div>
+  </section>
 
-      <h3>Evidencia de ejecución local ya verificada</h3>
-      <div class="grid grid-3" aria-label="Verificaciones locales del proyecto">
-        <article class="card stat"><strong>51 passed</strong>Suite actual completa ejecutada correctamente, con una advertencia conocida de LangChain.</article>
-        <article class="card stat"><strong>3 servicios</strong>Docker Compose verificado localmente con <code>ui</code>, <code>backend</code> y <code>mcp-server</code> activos y saludables.</article>
-        <article class="card stat"><strong>E2E local</strong>Flujos RAG, UI, login, alta de incidentes y consulta por ID probados en <code>localhost</code>.</article>
-      </div>
-      <p class="evidence">Evidencia de sesiones previas del proyecto: pytest 51 passed; Compose y flujos locales verificados. Esto no equivale a validar Kubernetes, serverless ni servicios externos.</p>
-      <div class="grid grid-2" style="margin-top:1rem">
-        <div class="callout good">
-          <strong>Fortalezas demostrables</strong>
-          <p>Chroma persistente, embeddings multilingües, reranker real, LangGraph compilado, MCP oficial, JWT staff, fallbacks explícitos y estado de runtime en cada respuesta.</p>
-        </div>
-        <div class="callout critical">
-          <strong>Brechas que no deben ocultarse</strong>
-          <p>El grafo es acíclico; no hay Arize, métricas de calidad/recursos, Kubernetes ni serverless; LangChain no coordina el pipeline completo.</p>
-        </div>
-      </div>
-    </section>
+  <section id="grafo" aria-labelledby="titulo-grafo">
+    <p class="kicker">Orquestación</p>
+    <h2 id="titulo-grafo">Los pasos reales de LangGraph</h2>
+    <ol class="steps">
+      <li><strong><code>validate_input</code></strong>Rechaza consultas inválidas y normaliza el idioma.</li>
+      <li><strong><code>handle_incident</code></strong>Detecta altas, confirmaciones o consultas de incidentes antes de RAG.</li>
+      <li><strong><code>retrieve_context</code></strong>Busca en Chroma; incorpora <code>location_hint</code>.</li>
+      <li><strong><code>evaluate_context</code></strong>Decide si hay evidencia suficiente para continuar.</li>
+      <li><strong><code>decide_tool_usage</code></strong>Determina si corresponde consultar una tool MCP.</li>
+      <li><strong><code>execute_tool</code></strong>Consulta estado operativo y registra éxito, error y latencia.</li>
+      <li><strong><code>generate_answer</code></strong>Genera con Gemini mediante la pipeline LCEL; si no hay evidencia usa respuesta segura.</li>
+      <li><strong><code>evaluate_or_refine</code></strong>Evalúa grounding y puede refinar la consulta una sola vez.</li>
+      <li><strong><code>finalize</code></strong>Construye el contrato final y termina en <code>END</code>.</li>
+    </ol>
+    <div class="callout good"><strong>El ciclo existe, pero está acotado:</strong><p>La única vuelta posible es <code>evaluate_or_refine → retrieve_context</code>. El estado cuenta intentos y el máximo es dos. Después, todas las rutas pasan por <code>finalize → END</code>. Así se cumple el ciclo sin permitir loops infinitos ni repetir operaciones MCP.</p><div class="evidence">Evidencia: <code>src/british_museum_agent/agent/graph.py</code> y <code>src/british_museum_agent/orchestration/quality.py</code></div></div>
+  </section>
 
-    <section id="arquitectura" aria-labelledby="titulo-arquitectura">
-      <p class="kicker">Vista de punta a punta</p>
-      <h2 id="titulo-arquitectura">Del usuario a la respuesta</h2>
-      <p class="section-lead">Streamlit es una interfaz delgada. FastAPI valida identidad y contratos. LangGraph toma las decisiones. RAG aporta evidencia, MCP aporta datos operativos y Gemini redacta la respuesta.</p>
+  <section id="rag" aria-labelledby="titulo-rag">
+    <p class="kicker">Recuperación aumentada</p>
+    <h2 id="titulo-rag">Qué RAG hacemos</h2>
+    <div class="grid grid-2">
+      <article class="card"><h3>Ingesta</h3><ol><li>Lee el corpus español en Markdown/PDF.</li><li>Normaliza y divide en chunks.</li><li>Calcula fingerprint del corpus.</li><li>Genera embeddings con <code>paraphrase-multilingual-MiniLM-L12-v2</code>.</li><li>Persiste la colección <code>british_museum_es</code> en Chroma.</li></ol></article>
+      <article class="card"><h3>Consulta</h3><ol><li>Embedding de la pregunta.</li><li>Consulta vectorial de candidatos.</li><li>Reranking con cross-encoder Hugging Face.</li><li>Filtrado por evidencia y armado del contexto.</li><li>Gemini responde sólo con ese contexto.</li></ol></article>
+    </div>
+    <div class="callout"><strong>Estado ejecutado:</strong> 55 chunks en Chroma, backend <code>chroma</code> y reranker <code>huggingface_cross_encoder</code> activos. Si Chroma falla, existe fallback léxico explícito.</div>
+  </section>
 
-      <div class="flow" role="img" aria-label="Flujo completo: Streamlit envía la consulta a FastAPI; FastAPI valida y llama a LangGraph; LangGraph usa RAG y MCP; luego Gemini genera y FastAPI devuelve la respuesta a Streamlit.">
-        <div class="flow-node"><strong>1. Streamlit</strong><small>Consulta, ubicación y JWT opcional</small></div>
-        <div class="flow-node"><strong>2. FastAPI</strong><small>Valida Pydantic y fuerza el rol real</small></div>
-        <div class="flow-node"><strong>3. LangGraph</strong><small>Enruta estado, evidencia y tools</small></div>
-        <div class="flow-node"><strong>4. Evidencia</strong><div class="parallel"><span>RAG · Chroma</span><span>MCP · SQLite</span></div></div>
-        <div class="flow-node"><strong>5. Gemini</strong><small>Genera con contexto o cae al fallback</small></div>
-        <div class="flow-node"><strong>6. Respuesta</strong><small>Texto, fuentes, scores, tools y runtime</small></div>
-      </div>
+  <section id="ranking" aria-labelledby="titulo-ranking">
+    <p class="kicker">Relevancia</p>
+    <h2 id="titulo-ranking">Ranking y re-ranking</h2>
+    <div class="grid grid-2">
+      <article class="card"><h3>Ranking inicial</h3><p>Chroma ordena candidatos por similitud vectorial. Recupera más documentos que los que finalmente se entregan al modelo.</p></article>
+      <article class="card"><h3>Re-ranking</h3><p>El cross-encoder compara pregunta y documento con atención conjunta. El score final combina <strong>25% similitud vectorial + 75% reranker</strong>.</p></article>
+    </div>
+    <p class="section-lead">El agente entrega los mejores fragmentos al prompt. El primer score debe superar el umbral configurado para considerar que hay evidencia; si no, refina una vez o responde sin inventar.</p>
+  </section>
 
-      <div class="callout">
-        <strong>Regla de confianza clave:</strong> el campo <code>user_role</code> enviado por el cliente no habilita privilegios. FastAPI lo reemplaza por <code>staff</code> sólo cuando valida un JWT; de lo contrario fuerza <code>visitor</code>.
-        <div class="evidence">Evidencia: src/british_museum_agent/api/main.py:147-158</div>
-      </div>
-    </section>
+  <section id="roles" aria-labelledby="titulo-roles">
+    <p class="kicker">Permisos</p><h2 id="titulo-roles">Visitante y personal</h2>
+    <div class="grid grid-2"><article class="card"><h3>Visitante</h3><ul><li>Consulta obras, artistas, salas, recorridos y accesibilidad.</li><li>No necesita login.</li><li>No puede ejecutar operaciones staff.</li></ul></article><article class="card"><h3>Personal</h3><ul><li>Inicia sesión con usuario y contraseña demo.</li><li>Recibe JWT firmado.</li><li>Puede consultar estado de salas y registrar incidentes.</li><li>El rol real lo determina FastAPI, no el navegador.</li></ul></article></div>
+  </section>
 
-    <section id="grafo" aria-labelledby="titulo-grafo">
-      <p class="kicker">Orquestación</p>
-      <h2 id="titulo-grafo">Los pasos reales de LangGraph</h2>
-      <ol class="steps">
-        <li><strong><code>validate_input</code></strong>Limpia la consulta, rechaza vacío y fuerza idioma español.</li>
-        <li><strong><code>handle_incident</code></strong>Antes de RAG, detecta altas, confirmaciones o consultas de incidentes.</li>
-        <li><strong><code>retrieve_context</code></strong>Busca la consulta y suma <code>location_hint</code> cuando existe.</li>
-        <li><strong><code>evaluate_context</code></strong>Acepta evidencia si el primer score es <strong>≥ 0,25</strong>; también reconoce consultas operativas sobre salas.</li>
-        <li><strong><code>decide_tool_usage</code></strong>Decide si corresponde pedir <code>get_gallery_status</code> a MCP.</li>
-        <li><strong><code>execute_tool</code></strong>Ejecuta MCP, registra input, salida, estado y latencia.</li>
-        <li><strong><code>generate_answer</code> / <code>generate_no_evidence</code></strong>Invoca Gemini con evidencia o responde que falta contexto sin inventar.</li>
-        <li><strong><code>finalize</code></strong>Construye el contrato final y termina en <code>END</code>.</li>
-      </ol>
-      <div class="callout critical">
-        <strong>Precisión para la entrega:</strong> usa LangGraph de verdad, pero no es un agente cíclico. Todas las aristas avanzan hacia <code>END</code>; no hay retorno, replanificación ni segundo intento dentro del grafo.
-        <div class="evidence">Evidencia: src/british_museum_agent/agent/graph.py:101-145</div>
-      </div>
-    </section>
+  <section id="contratos" aria-labelledby="titulo-contratos">
+    <p class="kicker">API</p><h2 id="titulo-contratos">Input y output</h2>
+    <div class="table-wrap"><table><thead><tr><th>Endpoint</th><th>Uso</th><th>Auth</th></tr></thead><tbody>
+      <tr><td><code>POST /api/v1/chat</code></td><td>Pregunta, idioma, ubicación opcional; devuelve respuesta, fuentes, tools, confianza, runtime y trace ID.</td><td>Visitante o JWT staff</td></tr>
+      <tr><td><code>POST /api/v1/auth/login</code></td><td>Credenciales demo → JWT bearer.</td><td>Público</td></tr>
+      <tr><td><code>POST /api/v1/incidents</code></td><td>Alta manual protegida de incidente.</td><td>JWT staff</td></tr>
+      <tr><td><code>GET /api/v1/incidents/{id}</code></td><td>Consulta operativa de incidente.</td><td>JWT staff</td></tr>
+      <tr><td><code>GET /metrics</code></td><td>Exposición Prometheus.</td><td>Interno</td></tr>
+      <tr><td><code>GET /api/v1/metrics/summary</code></td><td>Resumen JSON de métricas.</td><td>Interno</td></tr>
+    </tbody></table></div>
+  </section>
 
-    <section id="rag" aria-labelledby="titulo-rag">
-      <p class="kicker">Recuperación aumentada</p>
-      <h2 id="titulo-rag">El RAG que existe hoy</h2>
-      <div class="grid grid-3">
-        <article class="card">
-          <h3>1. Corpus e ingesta</h3>
-          <p>Lee únicamente <code>data/raw/spanish/*.md</code>. Los corpus descargados en otras carpetas no entran en el índice activo.</p>
-          <span class="badge info">13 chunks persistidos</span>
-          <div class="evidence">corpus.py:22-30 · index_manifest.json:2-8</div>
-        </article>
-        <article class="card">
-          <h3>2. Chunking</h3>
-          <p>Agrupa párrafos hasta un máximo nominal de 900 caracteres, antepone el título y no usa overlap.</p>
-          <p>Un párrafo individual demasiado largo no se subdivide.</p>
-          <div class="evidence">corpus.py:80-101</div>
-        </article>
-        <article class="card">
-          <h3>3. Embeddings</h3>
-          <p><code>sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2</code>, ejecutado localmente y con vectores normalizados.</p>
-          <div class="evidence">config.py:24 · vector_store.py:30-51</div>
-        </article>
-        <article class="card">
-          <h3>4. Chroma</h3>
-          <p>Cliente persistente, colección <code>british_museum_es</code>, HNSW y distancia coseno. La ingesta trabaja en lotes de 32.</p>
-          <div class="evidence">indexer.py:64-82</div>
-        </article>
-        <article class="card">
-          <h3>5. Recuperación</h3>
-          <p>Chroma recupera hasta <strong>10 candidatos</strong>. El reranker los reordena y devuelve <strong>4 resultados</strong>.</p>
-          <div class="evidence">config.py:26 · vector_store.py:165-212</div>
-        </article>
-        <article class="card">
-          <h3>6. Gate de evidencia</h3>
-          <p>El grafo continúa sólo cuando el mejor score es <strong>≥ 0,25</strong>. Con menos evidencia pide precisión.</p>
-          <div class="evidence">agent/graph.py:199-216</div>
-        </article>
-      </div>
+  <section id="ia-observabilidad" aria-labelledby="titulo-ia">
+    <p class="kicker">Generación, trazas y degradación</p><h2 id="titulo-ia">Gemini, LangChain, LangSmith y Phoenix</h2>
+    <div class="grid grid-3"><article class="card"><h3>Gemini</h3><p><code>gemini-2.5-flash</code> genera en español con evidencia y datos MCP. Si falla, hay fallback local explícito.</p></article><article class="card"><h3>LangChain</h3><p>La generación usa LCEL: <code>RunnableLambda → ChatPromptTemplate → modelo → StrOutputParser</code>.</p></article><article class="card"><h3>LangSmith</h3><p>Runtime verificado como activo en el proyecto <code>british-museum-agent</code>; registra runs y metadata técnica.</p></article></div>
+    <div class="callout good"><strong>Phoenix OSS integrado:</strong><p>Compose levanta Phoenix persistente en <code>6006</code>. OpenTelemetry/OpenInference envía trazas OTLP con inputs/outputs ocultos. La API de Phoenix verificó el proyecto <code>british-museum-agent</code>.</p></div>
+    <h3>Métricas implementadas</h3><div class="table-wrap"><table><thead><tr><th>Área</th><th>Medición</th></tr></thead><tbody><tr><td>Tráfico</td><td>Requests, errores, status, latencia, máximo y throughput acumulado.</td></tr><tr><td>Calidad</td><td>Confianza, no-evidence, groundedness proxy y hallucination-risk proxy.</td></tr><tr><td>Recursos</td><td>CPU acumulada y memoria residente cuando el sistema operativo lo permite.</td></tr><tr><td>Tools</td><td>Errores por tool y fallos de chat.</td></tr></tbody></table></div>
+    <p class="evidence">Limitación: los proxies de groundedness y alucinación no reemplazan un dataset de evaluación factual anotado. Detalle en <code>docs/observability.md</code>.</p>
+  </section>
 
-      <details>
-        <summary>¿Qué ocurre si Chroma no está disponible?</summary>
-        <div>
-          <p>El sistema usa un índice JSON léxico. Expande algunos sinónimos en español, calcula overlap de términos y devuelve top-4. Es una degradación explícita: no se presenta como búsqueda vectorial.</p>
-          <div class="evidence">retrieval/knowledge_base.py:40-109 · retrieval/vector_store.py:215-259</div>
-        </div>
-      </details>
-    </section>
+  <section id="docker" aria-labelledby="titulo-docker">
+    <p class="kicker">Ejecución</p><h2 id="titulo-docker">Docker, persistencia y despliegue</h2>
+    <div class="grid grid-2"><article class="card"><h3>Compose local</h3><p><code>docker compose up --build</code> inicia Phoenix, MCP, backend y UI. El backend ingesta/indexa durante el primer arranque; los datos se montan fuera de la imagen.</p><p>Puertos: UI <code>8501</code>, API <code>8000</code>, MCP <code>8001</code>, Phoenix <code>6006</code>.</p></article><article class="card"><h3>Kubernetes</h3><p><code>deploy/base</code> y <code>deploy/overlays/dev</code> incluyen Kustomize, PVC, probes, NetworkPolicy, HPA y Secret de ejemplo.</p><p>La UI escala 2–5. El backend queda en 1 réplica porque SQLite/Chroma usan almacenamiento <code>ReadWriteOnce</code>.</p></article></div>
+    <div class="callout"><strong>Automatización:</strong> <code>scripts/validate_k8s.py</code> valida 177 checks; <code>scripts/deploy_k8s.ps1</code> soporta validate, render, dry-run, apply, status y rollback. El HPA necesita un metrics server instalado en el cluster.</div>
+  </section>
 
-    <section id="ranking" aria-labelledby="titulo-ranking">
-      <p class="kicker">Orden de relevancia</p>
-      <h2 id="titulo-ranking">Ranking y reranking, sin magia</h2>
-      <p class="section-lead">Chroma produce un orden semántico inicial. Después, un cross-encoder analiza cada par consulta–pasaje con más precisión. El score final combina ambos.</p>
+  <section id="matriz" aria-labelledby="titulo-matriz">
+    <p class="kicker">Evaluación contra el entregable</p><h2 id="titulo-matriz">Matriz de cumplimiento</h2>
+    <div class="table-wrap"><table><thead><tr><th>Requisito</th><th>Evidencia actual</th><th class="status-cell">Estado</th></tr></thead><tbody>
+      <tr><td>Componentes modulares</td><td>Retrieval, agent, orchestration, generation, observability, application y MCP.</td><td><span class="badge ok">✓ Cumple</span></td></tr>
+      <tr><td>Base vectorial y reranker</td><td>Chroma persistente, 55 chunks, embeddings multilingües y cross-encoder Hugging Face.</td><td><span class="badge ok">✓ Cumple</span></td></tr>
+      <tr><td>Orquestación LangChain</td><td>Pipeline LCEL observable para la generación.</td><td><span class="badge ok">✓ Cumple</span></td></tr>
+      <tr><td>Agente cíclico LangGraph</td><td>Reintento controlado a retrieval, máximo dos intentos, luego END.</td><td><span class="badge ok">✓ Cumple</span></td></tr>
+      <tr><td>MCP seguro</td><td>Streamable HTTP, token interno, JWT staff y tools operativas.</td><td><span class="badge ok">✓ Cumple</span></td></tr>
+      <tr><td>Kubernetes y/o serverless</td><td>Kubernetes preparado; serverless no elegido por persistencia y warm-up.</td><td><span class="badge ok">✓ Kubernetes</span></td></tr>
+      <tr><td>Automatización y escalado</td><td>Script operativo, Makefile, HPA UI 2–5 y límite backend documentado.</td><td><span class="badge ok">✓ Cumple</span></td></tr>
+      <tr><td>LangSmith y Arize</td><td>LangSmith + Phoenix OSS local; AX Cloud queda opcional.</td><td><span class="badge ok">✓ Phoenix</span></td></tr>
+      <tr><td>Latencia, throughput, calidad y recursos</td><td>Endpoint Prometheus/JSON con métricas y proxies documentados.</td><td><span class="badge ok">✓ Con alcance</span></td></tr>
+      <tr><td>Documentación operativa</td><td><code>docs/observability.md</code> y <code>docs/deployment.md</code>.</td><td><span class="badge ok">✓ Cumple</span></td></tr>
+      <tr><td>Despliegue real</td><td>Manifiestos y scripts listos; no aplicados contra un cluster real.</td><td><span class="badge partial">△ No verificado</span></td></tr>
+    </tbody></table></div>
+  </section>
 
-      <div class="score-bar" aria-label="El score final asigna 25 por ciento al score vectorial y 75 por ciento al reranker">
-        <span class="score-vector">25% vector</span>
-        <span class="score-rerank">75% reranker</span>
-      </div>
-      <div class="formula" aria-label="Fórmula de score final">score final = 0,25 × score vectorial + 0,75 × score reranker</div>
+  <section id="brechas" aria-labelledby="titulo-brechas"><p class="kicker">Próximos pasos reales</p><h2 id="titulo-brechas">Lo que todavía falta</h2><div class="priority"><div class="priority-num">1</div><div><h3>Evaluación factual</h3><p>Agregar dataset de preguntas, respuestas esperadas y umbrales.</p></div><div class="priority-num">2</div><div><h3>Monitoreo centralizado</h3><p>Conectar Prometheus/Grafana o Phoenix/AX Cloud gestionado.</p></div><div class="priority-num">3</div><div><h3>Escalado backend</h3><p>Migrar SQLite/Chroma a almacenamiento apto para múltiples réplicas.</p></div><div class="priority-num">4</div><div><h3>Aplicación en cluster</h3><p>Pinnear imágenes, cargar Secret real y ejecutar apply en Kubernetes.</p></div></div></section>
 
-      <div class="grid grid-2">
-        <article class="card">
-          <h3>Cómo se calculan los componentes</h3>
-          <ul>
-            <li><strong>Vectorial:</strong> <code>clamp(1 − distancia_coseno / 2)</code>.</li>
-            <li><strong>Reranker:</strong> sigmoid del logit del cross-encoder.</li>
-            <li><strong>Modelo:</strong> <code>cross-encoder/mmarco-mMiniLMv2-L12-H384-v1</code>.</li>
-            <li><strong>Orden:</strong> score final descendente.</li>
-          </ul>
-        </article>
-        <article class="card">
-          <h3>Ejemplo numérico</h3>
-          <p>Supongamos un fragmento con score vectorial <strong>0,80</strong> y score del reranker <strong>0,60</strong>:</p>
-          <p><code>0,25 × 0,80 + 0,75 × 0,60</code></p>
-          <p><code>0,20 + 0,45 = 0,65</code></p>
-          <p><strong>Score final: 0,65.</strong> Supera el umbral 0,25 y puede alimentar a Gemini.</p>
-        </article>
-      </div>
-      <div class="evidence">Evidencia: retrieval/vector_store.py:54-71,165-212,276-284</div>
-    </section>
+  <section id="realidad" aria-labelledby="titulo-realidad"><p class="kicker">Honestidad arquitectónica</p><h2 id="titulo-realidad">Implementado versus opcional</h2><div class="grid grid-2"><article class="card"><h3>Implementado y conectado</h3><ul><li>Streamlit → FastAPI → LangGraph.</li><li>Chroma con 55 chunks y reranker real.</li><li>Gemini con fallback local.</li><li>MCP sobre SQLite y JWT staff.</li><li>LangSmith y Phoenix OSS.</li><li>Métricas y documentación operativa.</li><li>Docker Compose y Kustomize Kubernetes.</li></ul></article><article class="card"><h3>Declarado como pendiente</h3><ul><li>AX Cloud con credenciales reales.</li><li>Prometheus/Grafana centralizado.</li><li>Dataset factual para evaluar alucinaciones.</li><li>Aplicación en cluster Kubernetes real.</li><li>Escalado horizontal del backend con almacenamiento multi-writer.</li></ul></article></div><div class="callout good"><strong>Cómo presentarlo:</strong><p>“El sistema entregable es completo y demostrable en local, con una ruta Kubernetes verificable. Las limitaciones de plataforma y evaluación están documentadas, no ocultas.”</p></div></section>
 
-    <section id="roles" aria-labelledby="titulo-roles">
-      <p class="kicker">Autorización y operaciones</p>
-      <h2 id="titulo-roles">Visitante, personal e incidentes</h2>
-      <div class="grid grid-2 branch">
-        <article class="card role-card">
-          <h3>Visitante</h3>
-          <span class="badge info">Chat público</span>
-          <ul>
-            <li>Consulta el corpus mediante RAG.</li>
-            <li>Puede pedir el estado operativo de salas mediante MCP.</li>
-            <li>No puede crear ni leer incidentes internos.</li>
-            <li>Aunque envíe <code>user_role: "staff"</code>, la API lo fuerza a visitante sin JWT.</li>
-          </ul>
-        </article>
-        <article class="card role-card staff">
-          <h3>Personal</h3>
-          <span class="badge info">JWT HS256</span>
-          <ul>
-            <li>Inicia sesión contra hash bcrypt en SQLite.</li>
-            <li>Puede consultar incidentes por ID mediante chat + MCP.</li>
-            <li>Puede preparar y confirmar altas conversacionales.</li>
-            <li>Puede usar el formulario estructurado para alta directa.</li>
-          </ul>
-        </article>
-      </div>
-
-      <h3>Alta conversacional protegida</h3>
-      <div class="flow flow-five" role="img" aria-label="Alta de incidente por chat: personal autenticado describe el incidente; se validan campos; se guarda un pendiente; se exige Confirmo más nonce dentro de cinco minutos; MCP crea el incidente.">
-        <div class="flow-node"><strong>Descripción</strong><small>Personal + JWT</small></div>
-        <div class="flow-node"><strong>Validación</strong><small>Sala, categoría, prioridad, detalle</small></div>
-        <div class="flow-node"><strong>Pendiente</strong><small>Nonce ligado a sesión y usuario</small></div>
-        <div class="flow-node"><strong>Confirmación</strong><small><code>Confirmo &lt;nonce&gt;</code> · 5 min</small></div>
-        <div class="flow-node"><strong>MCP</strong><small><code>create_incident</code></small></div>
-      </div>
-
-      <div class="callout critical">
-        <strong>Dos caminos con garantías diferentes:</strong> la confirmación aplica al chat. El formulario llama directamente a <code>POST /api/v1/incidents</code>; exige JWT, pero no nonce. Además, el pendiente conversacional vive en memoria y se pierde ante reinicios o réplicas no compartidas.
-        <div class="evidence">incident_chat.py:13-14,46-59,81-120 · api/main.py:181-210</div>
-      </div>
-
-      <div class="table-wrap" style="margin-top:1rem">
-        <table>
-          <caption>Tools expuestas por el servidor MCP y uso efectivo</caption>
-          <thead><tr><th>Tool</th><th>Protección</th><th>Uso efectivo</th></tr></thead>
-          <tbody>
-            <tr><td><code>get_gallery_status</code></td><td>Sin token interno por tool</td><td>Agente: visitante y personal</td></tr>
-            <tr><td><code>create_incident</code></td><td>JWT en API/workflow + token MCP interno</td><td>Chat confirmado y formulario directo</td></tr>
-            <tr><td><code>get_incident</code></td><td>JWT staff + token MCP interno</td><td>Consulta conversacional por ID</td></tr>
-            <tr><td><code>get_accessibility_info</code></td><td>Sin token interno por tool</td><td><strong>No conectada</strong> al cliente ni al agente</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <section id="contratos" aria-labelledby="titulo-contratos">
-      <p class="kicker">API pública</p>
-      <h2 id="titulo-contratos">Contratos de entrada y salida</h2>
-      <div class="grid grid-2">
-        <article>
-          <h3>Entrada: <code>POST /api/v1/chat</code></h3>
-          <pre><code>{
-  "message": "¿Qué puedo ver en la Sala 4?",
-  "user_role": "visitor",
-  "session_id": "demo",
-  "language": "es",
-  "location_hint": "Sala 4",
-  "metadata": { "client": "streamlit" }
-}</code></pre>
-          <p><strong>Límites:</strong> mensaje 1–4000 caracteres; sesión 1–128; ubicación hasta 256; metadata JSON hasta 8192 bytes.</p>
-        </article>
-        <article>
-          <h3>Salida: <code>ChatResponse</code></h3>
-          <pre><code>{
-  "answer": "La Sala 4...",
-  "trace_id": "uuid",
-  "sources": [{
-    "title": "Egipto: Sala 4",
-    "source": "data/raw/spanish/...",
-    "url": "https://...",
-    "chunk_id": "egipto_sala_4-1",
-    "score": 0.78,
-    "excerpt": "..."
-  }],
-  "tool_calls": [],
-  "confidence": 0.78,
-  "needs_clarification": false,
-  "safety_notes": [],
-  "runtime": {
-    "retrieval": { "active": true, "mode": "chroma", "detail": "..." },
-    "reranking": { "active": true, "mode": "huggingface_cross_encoder", "detail": "..." },
-    "generation": { "active": true, "mode": "gemini", "detail": "..." },
-    "tracing": { "active": true, "mode": "langsmith", "detail": "..." }
-  }
-}</code></pre>
-        </article>
-      </div>
-      <p class="evidence">Contrato: src/british_museum_agent/domain/models.py:15-82</p>
-
-      <details>
-        <summary>Otros endpoints relevantes</summary>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Endpoint</th><th>Función</th><th>Control</th></tr></thead>
-            <tbody>
-              <tr><td><code>POST /api/v1/auth/login</code></td><td>Entrega JWT staff</td><td>bcrypt + JWT HS256</td></tr>
-              <tr><td><code>POST /api/v1/incidents</code></td><td>Crea incidente mediante MCP</td><td>Bearer JWT; sin nonce</td></tr>
-              <tr><td><code>GET /api/v1/galleries/{id}/status</code></td><td>Estado de sala</td><td>Público</td></tr>
-              <tr><td><code>GET /api/v1/artworks/{id}</code></td><td>Respuesta placeholder</td><td>No hay catálogo operativo</td></tr>
-              <tr><td><code>GET /api/v1/health</code></td><td>Readiness detallada</td><td>Devuelve 503 degradado</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </details>
-    </section>
-
-    <section id="ia-observabilidad" aria-labelledby="titulo-ia">
-      <p class="kicker">Generación, trazas y degradación</p>
-      <h2 id="titulo-ia">Gemini, LangChain, LangSmith y fallbacks</h2>
-      <div class="grid grid-3">
-        <article class="card">
-          <h3>Gemini</h3>
-          <p>Modelo configurado: <code>gemini-2.5-flash</code> mediante <code>ChatGoogleGenerativeAI</code>, con dos reintentos.</p>
-          <p>El prompt exige español, evidencia, citas por título y prioridad para datos MCP.</p>
-        </article>
-        <article class="card">
-          <h3>LangChain</h3>
-          <p>Se usa <code>langchain_core.messages</code> y el adaptador de Gemini.</p>
-          <p><strong>No</strong> hay una chain LCEL que coordine retrieval, tools y generación: eso lo hace LangGraph más código Python.</p>
-        </article>
-        <article class="card">
-          <h3>LangSmith</h3>
-          <p>Se habilita si tracing está activo y hay API key. Grafo y Gemini envían run name, tags, rol, idioma y trace ID.</p>
-          <p>No se verificó entrega externa de trazas durante esta auditoría.</p>
-        </article>
-      </div>
-
-      <h3>Escalera de fallbacks</h3>
-      <ol>
-        <li>Chroma no inicia o falla el warmup → índice léxico JSON.</li>
-        <li>Falla el reranker → conserva el ranking vectorial.</li>
-        <li>Falla Gemini o falta la clave → respuesta local basada en fragmentos.</li>
-        <li>No hay evidencia ≥ 0,25 → mensaje de aclaración sin invocar generación.</li>
-        <li>Falla MCP → tool call con error y respuesta explícitamente degradada.</li>
-      </ol>
-      <div class="callout critical">
-        <strong>Observabilidad incompleta:</strong> hay trazas condicionales de LangSmith y latencia por tool, pero no hay Arize ni métricas de throughput, alucinaciones, costos o recursos exigidas por el enunciado.
-      </div>
-      <p class="evidence">answer_generator.py:80-205 · config.py:48-54 · agent/graph.py:69-88,324-350</p>
-    </section>
-
-    <section id="docker" aria-labelledby="titulo-docker">
-      <p class="kicker">Ejecución empaquetada</p>
-      <h2 id="titulo-docker">Los tres servicios Docker Compose</h2>
-      <div class="grid grid-3">
-        <article class="card">
-          <h3>1. <code>ui</code></h3>
-          <p>Streamlit en puerto 8501. Sólo necesita la URL del backend y espera a que FastAPI esté saludable.</p>
-        </article>
-        <article class="card">
-          <h3>2. <code>backend</code></h3>
-          <p>FastAPI en puerto 8000. Ejecuta ingesta léxica, ingesta Chroma y luego Uvicorn. Monta corpus, índices, SQLite y caché Hugging Face.</p>
-        </article>
-        <article class="card">
-          <h3>3. <code>mcp-server</code></h3>
-          <p>Servidor MCP streamable HTTP en puerto 8001. Inicializa SQLite y expone las tools operativas.</p>
-        </article>
-      </div>
-      <div class="callout">
-        <strong>Alcance real:</strong> Docker Compose organiza servicios y healthchecks. No hay manifiestos Kubernetes, funciones serverless ni scripts de escalado.
-        <div class="evidence">Evidencia: docker-compose.yml:1-79</div>
-      </div>
-    </section>
-
-    <section id="matriz" aria-labelledby="titulo-matriz">
-      <p class="kicker">Evaluación contra el entregable</p>
-      <h2 id="titulo-matriz">Matriz detallada de cumplimiento</h2>
-      <p class="section-lead">Los estados combinan evidencia estática con verificaciones locales previas: 51 tests aprobados, tres servicios Compose saludables y flujos principales probados en localhost. El despliegue en una plataforma real y los servicios externos se evalúan por separado.</p>
-      <div class="table-wrap">
-        <table>
-          <caption>Enunciado → evidencia → estado</caption>
-          <thead>
-            <tr><th>Requisito</th><th>Evidencia verificable</th><th class="status-cell">Estado</th></tr>
-          </thead>
-          <tbody>
-            <tr><td>Componentes modulares separados</td><td><span class="evidence">enunciado.md:71-74</span><br>Existen retrieval, agent, generation y adapters_mcp; ranking está dentro de retrieval y no hay observabilidad/despliegue.</td><td><span class="badge partial">△ Parcial</span></td></tr>
-            <tr><td>README general y ejecución</td><td><span class="evidence">README.md:5-27,56-120</span><br>Arquitectura, configuración, local, Compose y API.</td><td><span class="badge ok">✓ Cumple</span></td></tr>
-            <tr><td>Base vectorial semántica</td><td><span class="evidence">vector_store.py:82-189 · index_manifest.json:2-8</span><br>Chroma persistente con colección e índice materializado.</td><td><span class="badge ok">✓ Cumple</span></td></tr>
-            <tr><td>Re-ranker</td><td><span class="evidence">vector_store.py:54-71,191-212</span><br>Cross-encoder multilingüe y combinación 25/75.</td><td><span class="badge ok">✓ Cumple</span></td></tr>
-            <tr><td>Orquestación LangChain</td><td><span class="evidence">answer_generator.py:7,92-140</span><br>Mensajes y Gemini usan LangChain; el pipeline completo no es una chain.</td><td><span class="badge partial">△ Parcial</span></td></tr>
-            <tr><td>Agente cíclico LangGraph</td><td><span class="evidence">agent/graph.py:101-145</span><br>StateGraph real, pero todas las rutas terminan en END sin ciclos.</td><td><span class="badge partial">△ Parcial</span></td></tr>
-            <tr><td>MCP seguro y conforme</td><td><span class="evidence">client.py:70-97 · server.py:28-39,69-103</span><br>SDK MCP, token en header y comparación constante.</td><td><span class="badge ok">✓ Cumple</span></td></tr>
-            <tr><td>Kubernetes y/o serverless</td><td><span class="evidence">docker-compose.yml:1-79</span><br>Sólo existe Docker Compose.</td><td><span class="badge no">✕ No cumple</span></td></tr>
-            <tr><td>Automatización de despliegue y escalado</td><td><span class="evidence">docker-compose.yml:1-79 · Makefile:19-23</span><br>Levanta y baja servicios; no automatiza escalado.</td><td><span class="badge partial">△ Parcial</span></td></tr>
-            <tr><td>LangSmith y Arize</td><td><span class="evidence">config.py:31-54 · requirements.txt:12-18</span><br>LangSmith está integrado; Arize está ausente.</td><td><span class="badge partial">△ Parcial</span></td></tr>
-            <tr><td>Latencia, throughput, alucinaciones y recursos</td><td><span class="evidence">domain/models.py:24-29 · client.py:76-91</span><br>Sólo se registra latencia de tools.</td><td><span class="badge no">✕ No cumple</span></td></tr>
-            <tr><td>Decisiones arquitectónicas</td><td><span class="evidence">docs/adr/ADR-001-architecture.md:1-13</span><br>ADR aceptado sobre arquitectura hexagonal.</td><td><span class="badge ok">✓ Cumple</span></td></tr>
-            <tr><td>Métricas documentadas</td><td>No existe definición operable ni documento de métricas.</td><td><span class="badge no">✕ No cumple</span></td></tr>
-            <tr><td>Despliegue y monitoreo documentados</td><td><span class="evidence">README.md:100-120</span><br>Compose está documentado; monitoreo operativo no.</td><td><span class="badge partial">△ Parcial</span></td></tr>
-            <tr><td>Repositorio funcional y modular</td><td><strong>Entorno local: verificado.</strong> Suite actual con 51 tests aprobados; Compose con ui/backend/mcp-server saludable; RAG, UI, alta y consulta de incidentes probados en localhost.<br><strong>Despliegue real: no validado</strong>; esa brecha se refleja por separado en Kubernetes/serverless, observabilidad y scripts de plataforma.</td><td><span class="badge ok">✓ Cumple local</span></td></tr>
-            <tr><td>Observabilidad correctamente instrumentada</td><td><span class="evidence">agent/graph.py:69-88,342-350</span><br>Tracing condicional, sin Arize ni métricas requeridas.</td><td><span class="badge partial">△ Parcial</span></td></tr>
-            <tr><td>Scripts listos para despliegue real</td><td><span class="evidence">Dockerfile.backend:1-16 · docker-compose.yml:1-79</span><br>Artefactos Docker presentes; faltan plataforma y validación real.</td><td><span class="badge partial">△ Parcial</span></td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <section id="brechas" aria-labelledby="titulo-brechas">
-      <p class="kicker">Camino hacia cumplimiento completo</p>
-      <h2 id="titulo-brechas">Brechas priorizadas</h2>
-      <div class="priority">
-        <div class="priority-num">1</div><div><h3>Convertir el DAG en un ciclo controlado</h3><p>Agregar evaluación de respuesta y una arista de retorno con máximo de iteraciones. Debe quedar claro cuándo reconsulta, cuándo usa otra tool y cuándo termina.</p></div>
-        <div class="priority-num">2</div><div><h3>Completar observabilidad</h3><p>Integrar Arize o justificar una alternativa, medir latencia total, throughput, errores, costo/tokens, calidad factual y recursos; documentar umbrales y alertas.</p></div>
-        <div class="priority-num">3</div><div><h3>Agregar despliegue de plataforma</h3><p>Crear manifiestos Kubernetes o una opción serverless, probes, secrets, límites de CPU/memoria, autoscaling y procedimiento de rollback.</p></div>
-        <div class="priority-num">4</div><div><h3>Alinear la orquestación LangChain</h3><p>Modelar al menos la preparación de prompt y generación como Runnable/chain observable, o documentar explícitamente por qué LangGraph reemplaza esa función.</p></div>
-        <div class="priority-num">5</div><div><h3>Endurecer confirmaciones distribuidas</h3><p>Persistir pendientes y nonces con consumo atómico; decidir si el formulario directo debe exigir confirmación equivalente.</p></div>
-        <div class="priority-num">6</div><div><h3>Cerrar diferencias entre código y documentación</h3><p>Conectar o retirar <code>get_accessibility_info</code>, completar el catálogo real, actualizar README/C4 y documentar qué corpus sí se indexa.</p></div>
-      </div>
-    </section>
-
-    <section id="realidad" aria-labelledby="titulo-realidad">
-      <p class="kicker">Honestidad arquitectónica</p>
-      <h2 id="titulo-realidad">Implementación real versus intención</h2>
-      <div class="grid grid-2">
-        <article class="card">
-          <h3>Está realmente conectado</h3>
-          <ul>
-            <li>Streamlit → FastAPI → LangGraph.</li>
-            <li>Chroma con 13 chunks y fallback léxico.</li>
-            <li>Embeddings y cross-encoder locales.</li>
-            <li>Gemini con fallback local explícito.</li>
-            <li>MCP streamable HTTP sobre SQLite.</li>
-            <li>JWT staff y confirmación conversacional.</li>
-            <li>LangSmith condicional y runtime status.</li>
-            <li>Docker Compose con tres servicios.</li>
-          </ul>
-        </article>
-        <article class="card">
-          <h3>Es intención, placeholder o deriva</h3>
-          <ul>
-            <li><code>/artworks/{id}</code> no tiene catálogo real.</li>
-            <li><code>get_accessibility_info</code> existe, pero el agente no puede llamarla.</li>
-            <li>El C4 menciona inventario y tours sin operaciones ejecutables.</li>
-            <li>Una docstring antigua dice que MCP llegará “later”, aunque ya existe cliente/servidor real.</li>
-            <li>README omite <code>get_incident</code> al listar tools.</li>
-            <li>No existen ciclos, Arize, Kubernetes, serverless ni métricas completas.</li>
-          </ul>
-        </article>
-      </div>
-      <div class="callout good">
-        <strong>Cómo presentarlo bien:</strong> no digas “cumple todo”. Decí: “La base de producción está implementada y es demostrable; la auditoría identifica con precisión qué falta para satisfacer el enunciado completo”. Eso muestra criterio de ingeniería, no debilidad.
-      </div>
-    </section>
-
-    <section id="guion" aria-labelledby="titulo-guion">
-      <p class="kicker">Presentación</p>
-      <h2 id="titulo-guion">Guion oral de 3 minutos</h2>
-      <div class="script">
-        <p><span class="time">0:00–0:30 · Problema y arquitectura.</span> “Este proyecto es un asistente en español para visitantes y personal del British Museum. La interfaz está en Streamlit, FastAPI valida los contratos y la identidad, y LangGraph decide si recuperar conocimiento, consultar una operación del museo o generar una respuesta.”</p>
-        <p><span class="time">0:30–1:10 · RAG y ranking.</span> “El RAG actual indexa 13 fragmentos del corpus español en Chroma. Usa embeddings multilingües y recupera diez candidatos. Después, un cross-encoder los reordena: el score final pesa 25% la similitud vectorial y 75% el reranker. Los cuatro mejores pasan al agente y sólo se consideran evidencia cuando el primero supera 0,25.”</p>
-        <p><span class="time">1:10–1:45 · MCP y seguridad.</span> “Para datos cambiantes, como el estado de una sala, el agente usa tools MCP respaldadas por SQLite. El rol staff no se confía al navegador: requiere un JWT válido. Las altas conversacionales de incidentes además necesitan una confirmación con nonce dentro de cinco minutos.”</p>
-        <p><span class="time">1:45–2:20 · Gemini y resiliencia.</span> “Gemini 2.5 Flash redacta usando sólo el contexto recuperado y los datos MCP. Si Chroma falla se usa búsqueda léxica; si falla el reranker se conserva el orden vectorial; si falla Gemini se responde con un fallback local. La respuesta siempre informa fuentes, scores, tools y componentes activos.”</p>
-        <p><span class="time">2:20–3:00 · Evaluación honesta.</span> “La solución cumple retrieval vectorial, reranking, MCP, documentación arquitectónica y una base de despliegue con tres servicios. No obstante, el LangGraph actual es acíclico, falta Arize y métricas completas, y no hay Kubernetes ni serverless. Por eso la evaluación correcta es cumplimiento parcial, con una hoja de ruta concreta para cerrar esas brechas.”</p>
-      </div>
-    </section>
-  </main>
-
-  <footer>
-    <p><strong>British Museum Agent · Guía pedagógica basada en auditoría estática y verificaciones locales previas</strong></p>
-    <p>El proyecto fue verificado en localhost con tests, Docker Compose y flujos end-to-end. Este documento no afirma validación de servicios externos ni de un despliegue real.</p>
-  </footer>
+  <section id="guion" aria-labelledby="titulo-guion"><p class="kicker">Presentación</p><h2 id="titulo-guion">Guion oral de 3 minutos</h2><div class="script"><p><span class="time">0:00–0:30 · Problema.</span> “Es un asistente en español para visitantes y personal del British Museum. Streamlit presenta, FastAPI protege y LangGraph decide.”</p><p><span class="time">0:30–1:10 · RAG.</span> “Indexamos 55 fragmentos en Chroma, recuperamos candidatos con embeddings y los reordenamos con un cross-encoder 25/75.”</p><p><span class="time">1:10–1:45 · MCP.</span> “Los datos operativos pasan por tools MCP respaldadas por SQLite. El personal usa JWT; el visitante consulta sin login.”</p><p><span class="time">1:45–2:20 · IA.</span> “Gemini genera desde evidencia. LangChain usa LCEL; LangSmith y Phoenix permiten observar la ejecución; hay fallbacks explícitos.”</p><p><span class="time">2:20–3:00 · Operación.</span> “La solución tiene métricas, documentación, Docker Compose y Kubernetes preparado. AX Cloud, evaluación factual y ejecución en un cluster real quedan declarados como próximos pasos.”</p></div></section>
+</main><footer><p><strong>British Museum Agent · Guía pedagógica basada en implementación y verificaciones locales</strong></p><p>Última verificación: 51 tests aprobados, 177 checks Kubernetes, Compose saludable y chat RAG end-to-end.</p></footer>
 </body>
 </html>

@@ -12,7 +12,7 @@ def test_chat_does_not_trust_client_staff_role_without_jwt(api_client: TestClien
     app.dependency_overrides[get_chat_service] = lambda: service
     try:
         response = api_client.post("/api/v1/chat", json={
-            "message": "En la sala 4 hay un cartel ilegible sobre accesibilidad. RegistrÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ un incidente de prioridad media.",
+            "message": "En la sala 4 hay un cartel ilegible sobre accesibilidad. Registrá un incidente de prioridad media.",
             "user_role": "staff", "session_id": "forged-staff-session",
         })
     finally:
@@ -28,7 +28,7 @@ def test_authenticated_staff_chat_confirms_then_uses_mcp(api_client: TestClient,
     service = ChatService(NoRagRetriever(), tools)
     app.dependency_overrides[get_chat_service] = lambda: service
     headers = {"Authorization": f"Bearer {staff_token}"}
-    command = "En la sala 4 hay un cartel ilegible sobre accesibilidad. RegistrÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ un incidente de prioridad media."
+    command = "En la sala 4 hay un cartel ilegible sobre accesibilidad. Registrá un incidente de prioridad media."
     try:
         prepared = api_client.post("/api/v1/chat", headers=headers, json={"message": command, "session_id": "staff-chat"})
         confirmation = "Confirmo " + _token(prepared.json()["answer"])

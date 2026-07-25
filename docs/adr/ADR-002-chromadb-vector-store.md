@@ -1,0 +1,29 @@
+# ADR-002: ChromaDB como Vector Store Local
+
+- **Fecha**: 2026-07-25
+- **Estado**: Aceptado
+- **Contexto**: El sistema necesita un vector store para búsqueda semántica sobre el corpus de conocimiento del British Museum en español. Los embeddings deben generarse localmente sin depender de APIs externas de embedding, y el índice debe persistir en disco para evitar re-indexar en cada reinicio. Además, se requiere un fallback lexical (basado en JSON + token matching) cuando Chroma no está disponible o el índice no existe.
+- **Decisión**: Se eligió ChromaDB 1.5.9 con `PersistentClient`, almacenando el índice en `data/chroma/`. La colección se nombra `british_museum_es`. Chroma se ejecuta embebido en el proceso del backend (no como servicio separado). El sistema consulta primero Chroma con `n_results=10` y luego aplica un cross-encoder reranker para obtener los 4 resultados finales. Si Chroma falla en startup o en búsqueda, se activa el fallback lexical (`KnowledgeBase` con índice JSON + token matching + expansión de sinónimos).
+- **Consecuencias**:
+  - **Positivas**:
+    - Sin dependencia externa de red para recuperación vectorial: todo corre localmente.
+    - Persistencia simple con `PersistentClient`: el índice sobrevive reinicios del contenedor.
+    - Integración directa con SentenceTransformers para embeddings locales.
+    - El fallback lexical permite que el sistema opere degradado pero no caiga si Chroma falla.
+    - `chromadb==1.5.9` es madura, con buena documentación y comunidad.
+  - **Negativas**:
+    - Chroma embehido no escala horizontalmente: al estar en-proceso, no puede compartirse entre múltiples réplicas del backend sin corrupción.
+    - El índice completo se carga en memoria del proceso backend; para corpus muy grandes puede competir con el modelo de embeddings.
+    - No hay soporte nativo de filtrado híbrido (vectorial + metadatos) tan robusto como en Qdrant o Pinecone.
+    - La migración futura a multi-réplica requerirá extraer Chroma a un servicio independiente o reemplazarlo.
+- **Alternativas consideradas**:
+  - **Pinecone**: Servicio cloud gestionado. Se descartó porque introduce dependencia externa de red, costos operativos, y el equipo quería un stack completamente local para demostración y desarrollo offline.
+  - **Qdrant**: Excelente rendimiento y filtrado. Se descartó porque requería ejecutar un servicio separado (incluso en modo local), agregando complejidad operativa al Docker Compose sin beneficio claro para el volumen actual de datos (~cientos de chunks).
+  - **FAISS**: Biblioteca de búsqueda vectorial sin persistencia propia. Se descartó porque requería implementar manualmente la serialización del índice, versionado de embeddings, y el fallback lexical. Chroma da persistencia "out of the box".
+  - **Milvus**: Orientado a escala masiva. Sobredimensionado para el proyecto; complejidad operativa innecesaria.
+- **Referencias**:
+  - `src/british_museum_agent/retrieval/vector_store.py` — `VectorKnowledgeBase` y `ResilientKnowledgeBase`
+  - `src/british_museum_agent/retrieval/knowledge_base.py` — `KnowledgeBase` (fallback lexical)
+  - `src/british_museum_agent/config.py` — `chroma_path`, `chroma_collection_name`, `retrieval_backend`
+  - `scripts/ingest_chroma.py` — ingesta y fingerprint del corpus
+  - `docker-compose.yml` — montaje de `./data/chroma:/app/data/chroma`

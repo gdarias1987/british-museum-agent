@@ -25,7 +25,7 @@ def create_staff_access_token(username: str, settings: Settings) -> str:
     if secret is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="La firma JWT no estÃ¡ configurada",
+            detail="La firma JWT no está configurada",
         )
     now = datetime.now(timezone.utc)
     payload = {
@@ -47,7 +47,7 @@ def require_staff(
     if secret is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="La verificaciÃ³n JWT no estÃ¡ configurada",
+            detail="La verificación JWT no está configurada",
         )
     try:
         payload = jwt.decode(
@@ -57,11 +57,11 @@ def require_staff(
             options={"require": ["sub", "role", "iat", "exp"]},
         )
     except InvalidTokenError as exc:
-        raise _unauthorized("El token de personal es invÃ¡lido o venciÃ³") from exc
+        raise _unauthorized("El token de personal es inválido o venció") from exc
 
     username = payload.get("sub")
     if not isinstance(username, str) or not username.strip():
-        raise _unauthorized("La identidad del personal no es vÃ¡lida")
+        raise _unauthorized("La identidad del personal no es válida")
     if payload.get("role") != UserRole.staff.value:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Se requiere el rol de personal")
     return StaffIdentity(username=username.strip())

@@ -140,13 +140,13 @@ class IncidentChatWorkflow:
             return IncidentChatResult(
                 answer=_format_incident(output), tool_calls=[call], confidence=1.0,
                 needs_clarification=False,
-                safety_notes=["Incidente obtenido mediante MCP para personal autenticado; no se consult? RAG."],
+                safety_notes=["Incidente obtenido mediante MCP para personal autenticado; no se consulta RAG."],
             )
-        answer = (f"No encontr? el incidente #{incident_id}." if output.get("error") == "incident_not_found"
+        answer = (f"No encontré el incidente #{incident_id}." if output.get("error") == "incident_not_found"
                   else "No pude consultar el incidente en este momento. No se inventaron datos.")
         return IncidentChatResult(
             answer=answer, tool_calls=[call], confidence=0.2, needs_clarification=False,
-            safety_notes=["La lectura operativa no devolvi? datos verificables."],
+            safety_notes=["La lectura operativa no devolvió datos verificables."],
         )
 
 

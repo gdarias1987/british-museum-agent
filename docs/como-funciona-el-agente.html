@@ -363,6 +363,7 @@
       <li><a href="#contratos">Contratos</a></li>
       <li><a href="#ia-observabilidad">IA y trazas</a></li>
       <li><a href="#docker">Docker</a></li>
+      <li><a href="#testing">Testing</a></li>
       <li><a href="#matriz">Matriz</a></li>
       <li><a href="#brechas">Brechas</a></li>
       <li><a href="#realidad">Real vs. intención</a></li>
@@ -376,7 +377,7 @@
     <h2 id="titulo-resumen">Sí: la base solicitada quedó implementada y verificada</h2>
     <p class="section-lead">El sistema ejecuta un RAG en español con ChromaDB, embeddings multilingües, reranking Hugging Face, LangGraph, MCP, Gemini y LangSmith. Phoenix OSS agrega trazas locales; el backend expone métricas y existe una ruta Kubernetes preparada.</p>
     <div class="grid grid-3">
-      <article class="card stat"><strong>113 passed</strong>Suite de tests local aprobada.</article>
+      <article class="card stat"><strong>115 passed</strong>Suite de tests local aprobada.</article>
       <article class="card stat"><strong>177 checks</strong>Validador estático Kubernetes aprobado.</article>
       <article class="card stat"><strong>4 servicios</strong>Compose saludable: UI, API, MCP y Phoenix.</article>
     </div>
@@ -448,7 +449,7 @@
       <article class="card"><h3><code>retrieval/</code></h3><p>Conecta con ChromaDB persistente para búsqueda semántica. Incluye embeddings multilingües locales (<code>paraphrase-multilingual-MiniLM-L12-v2</code>), indexación idempotente con fingerprint, carga de corpus desde Markdown/PDF, y un fallback léxico con stemming en español si Chroma no está disponible.</p><div class="evidence">Archivos: <code>vector_store.py</code>, <code>corpus.py</code>, <code>knowledge_base.py</code>, <code>indexer.py</code></div></article>
       <article class="card"><h3><code>ranking/</code></h3><p>Implementa el re-ranker cross-encoder (<code>mmarco-mMiniLMv2-L12-H384-v1</code>). Toma los candidatos de Chroma y los reordena por relevancia real. El score final combina 25% similitud vectorial + 75% reranker. Expone estado de salud (<code>reranker_active</code>) para el endpoint de health check de la API.</p><div class="evidence">Archivos: <code>reranker.py</code></div></article>
       <article class="card"><h3><code>orchestration/</code></h3><p>Orquestación con LangChain: define la evaluación determinista de grounding (<code>evaluate_grounding</code>) que mide evidencia, cobertura de fuentes y longitud de respuesta. También refina la consulta para reintentos (<code>refine_retrieval_query</code>). El pipeline de generación (LCEL) se re-exporta desde aquí para que la carpeta exponga todos los símbolos de orquestación.</p><div class="evidence">Archivos: <code>quality.py</code>, <code>__init__.py</code> (re-exporta <code>AnswerGenerator</code>)</div></article>
-      <article class="card"><h3><code>agent/</code></h3><p>Agente cíclico con LangGraph. StateGraph de 9 nodos que valida input, maneja incidentes, recupera contexto, evalúa evidencia, decide si usa tools MCP, genera respuesta con Gemini y evalúa si refinar (máximo 2 intentos). Cada nodo tiene una ruta condicional; el ciclo está acotado para evitar loops infinitos. Incluye detección de consultas operativas y flujo de incidentes en dos pasos (confirmación + ejecución).</p><div class="evidence">Archivos: <code>graph.py</code> (525 líneas)</div></article>
+      <article class="card"><h3><code>agent/</code></h3><p>Agente cíclico con LangGraph. StateGraph de 9 nodos que valida input, maneja incidentes, recupera contexto, evalúa evidencia, decide si usa tools MCP, genera respuesta con Gemini y evalúa si refinar (máximo 2 intentos). Cada nodo tiene una ruta condicional; el ciclo está acotado para evitar loops infinitos. Incluye <strong>MemorySaver checkpointer</strong> que persiste el estado del grafo entre invocaciones usando <code>thread_id</code> por sesión, permitiendo reanudar ejecución o inspeccionar estados intermedios.</p><div class="evidence">Archivos: <code>graph.py</code> (MemorySaver + StateGraph)</div></article>
       <article class="card"><h3><code>adapters_mcp/</code></h3><p>Implementación del Model Context Protocol 1.28.1. Servidor FastMCP con transporte Streamable HTTP y 4 tools: <code>get_gallery_status</code>, <code>get_accessibility_info</code>, <code>create_incident</code>, <code>get_incident</code>. Las tools de escritura están protegidas por un token interno HMAC que viaja como header de transporte (<code>X-MCP-Internal-Token</code>), nunca como argumento de tool. El cliente MCP se comunica con el servidor a través del mismo protocolo, con health check propio.</p><div class="evidence">Archivos: <code>server.py</code>, <code>client.py</code>, <code>museum_tools.py</code></div></article>
       <article class="card"><h3><code>observability/</code></h3><p>Métricas Prometheus in-process (<code>ServiceMetrics</code>) para HTTP (requests, errores, latencia por ruta), chat (confianza, groundedness proxy, hallucination risk proxy, tool errors) y proceso (CPU, memoria). Endpoint <code>/metrics</code> en formato Prometheus y <code>/api/v1/metrics/summary</code> en JSON. Trazabilidad con Arize Phoenix vía OTLP exporter gRPC + OpenInference LangChain instrumentation. LangSmith integrado por environment variables con tags y metadata.</p><div class="evidence">Archivos: <code>metrics.py</code>, <code>tracing.py</code>, <code>quality.py</code></div></article>
       <article class="card"><h3><code>deploy/</code></h3><p>Despliegue con Kustomize: base con namespace, backend, UI, MCP server, Phoenix, PVC (4 volúmenes), HPA (UI 2–5 réplicas, backend 1), NetworkPolicies (6 reglas) y Secret template. Overlay dev reduce réplicas. Scripts de automatización: PowerShell (<code>deploy_k8s.ps1</code>) con validate → render → dry-run → apply → status → rollback, y validador estático Python (<code>validate_k8s.py</code>) de 177 checks sin dependencias externas.</p><div class="evidence">Carpetas: <code>base/</code>, <code>overlays/dev/</code></div></article>
@@ -487,6 +488,35 @@
     <div class="callout"><strong>Automatización:</strong> <code>scripts/validate_k8s.py</code> valida 177 checks; <code>scripts/deploy_k8s.ps1</code> soporta validate, render, dry-run, apply, status y rollback. El HPA necesita un metrics server instalado en el cluster.</div>
   </section>
 
+  <section id="testing" aria-labelledby="titulo-testing">
+    <p class="kicker">Validación</p><h2 id="titulo-testing">Testing: 115 casos de prueba</h2>
+    <div class="grid grid-2">
+      <article class="card"><h3>Cómo ejecutar</h3>
+        <p><code>pytest -q</code> corre los 115 tests (~11s). La suite se agrupa por módulo:</p>
+        <ul>
+          <li><code>tests/test_agent_graph.py</code> (6) — grafo LangGraph end-to-end</li>
+          <li><code>tests/test_chat_incident_api.py</code> (17) — API REST + incidentes</li>
+          <li><code>tests/test_mcp_tools.py</code> (10) — tools MCP + SQLite</li>
+          <li><code>tests/test_observability.py</code> (62) — métricas, trazas, calidad</li>
+          <li><code>tests/test_ranking.py</code> (4) — reranker cross-encoder</li>
+          <li><code>tests/test_retrieval_knowledge_base.py</code> (8) — Chroma + indexación</li>
+          <li><code>tests/test_security.py</code> (8) — auth, rate-limit, JWT</li>
+        </ul>
+      </article>
+      <article class="card"><h3>Casos de uso cubiertos</h3>
+        <ul>
+          <li><strong>🔎 Consulta RAG con fuentes</strong> — pregunta sobre Egipto, obtiene respuesta citando fragmentos de conocimiento</li>
+          <li><strong>🏛️ Estado operativo</strong> — horarios, galerías cerradas, MCP tool sin evidencia RAG</li>
+          <li><strong>⚠️ Incidente de sala</strong> — flujo completo: confirmación → apertura → nota → cierre</li>
+          <li><strong>❌ Sin evidencia</strong> — pregunta fuera del corpus, el agente deriva a <code>no_evidence</code></li>
+          <li><strong>🔁 Checkpoints</strong> — verifica que MemorySaver persiste estado entre invocaciones</li>
+          <li><strong>🛡️ Seguridad</strong> — rate-limit, JWT inválido/api-key faltante, CORS, SQLi no ejecutable</li>
+          <li><strong>📊 Métricas</strong> — latencia, hallucination risk proxy, groundedness, recursos, trazas Phoenix</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+
   <section id="matriz" aria-labelledby="titulo-matriz">
     <p class="kicker">Evaluación contra el entregable</p><h2 id="titulo-matriz">Matriz de cumplimiento</h2>
     <div class="table-wrap"><table><thead><tr><th>Requisito</th><th>Evidencia actual</th><th class="status-cell">Estado</th></tr></thead><tbody>
@@ -509,6 +539,6 @@
   <section id="realidad" aria-labelledby="titulo-realidad"><p class="kicker">Honestidad arquitectónica</p><h2 id="titulo-realidad">Implementado versus opcional</h2><div class="grid grid-2"><article class="card"><h3>Implementado y conectado</h3><ul><li>Streamlit → FastAPI → LangGraph.</li><li>Chroma con 55 chunks y reranker real.</li><li>Gemini con fallback local.</li><li>MCP sobre SQLite y JWT staff.</li><li>LangSmith y Phoenix OSS.</li><li>Métricas y documentación operativa.</li><li>Docker Compose y Kustomize Kubernetes.</li></ul></article><article class="card"><h3>Declarado como pendiente</h3><ul><li>AX Cloud con credenciales reales.</li><li>Prometheus/Grafana centralizado.</li><li>Dataset factual para evaluar alucinaciones.</li><li>Aplicación en cluster Kubernetes real.</li><li>Escalado horizontal del backend con almacenamiento multi-writer.</li></ul></article></div><div class="callout good"><strong>Cómo presentarlo:</strong><p>“El sistema entregable es completo y demostrable en local, con una ruta Kubernetes verificable. Las limitaciones de plataforma y evaluación están documentadas, no ocultas.”</p></div></section>
 
   <section id="guion" aria-labelledby="titulo-guion"><p class="kicker">Presentación</p><h2 id="titulo-guion">Guion oral de 3 minutos</h2><div class="script"><p><span class="time">0:00–0:30 · Problema.</span> “Es un asistente en español para visitantes y personal del British Museum. Streamlit presenta, FastAPI protege y LangGraph decide.”</p><p><span class="time">0:30–1:10 · RAG.</span> “Indexamos 55 fragmentos en Chroma, recuperamos candidatos con embeddings y los reordenamos con un cross-encoder 25/75.”</p><p><span class="time">1:10–1:45 · MCP.</span> “Los datos operativos pasan por tools MCP respaldadas por SQLite. El personal usa JWT; el visitante consulta sin login.”</p><p><span class="time">1:45–2:20 · IA.</span> “Gemini genera desde evidencia. LangChain usa LCEL; LangSmith y Phoenix permiten observar la ejecución; hay fallbacks explícitos.”</p><p><span class="time">2:20–3:00 · Operación.</span> “La solución tiene métricas, documentación, Docker Compose y Kubernetes preparado. AX Cloud, evaluación factual y ejecución en un cluster real quedan declarados como próximos pasos.”</p></div></section>
-</main><footer><p><strong>British Museum Agent · Guía pedagógica basada en implementación y verificaciones locales</strong></p><p>Última verificación: 113 tests aprobados, 177 checks Kubernetes, Compose saludable y chat RAG end-to-end.</p></footer>
+</main><footer><p><strong>British Museum Agent · Guía pedagógica basada en implementación y verificaciones locales</strong></p><p>Última verificación: 115 tests aprobados, 177 checks Kubernetes, Compose saludable, chat RAG end-to-end y checkpoints LangGraph persistidos.</p></footer>
 </body>
 </html>

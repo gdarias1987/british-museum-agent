@@ -5,6 +5,7 @@ from time import perf_counter
 from typing import Any, TypedDict
 from uuid import UUID
 
+from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph
 
 from british_museum_agent.adapters_mcp.museum_tools import MuseumTools
@@ -76,14 +77,17 @@ class MuseumAgentGraph:
         self.tools = tools
         self.answer_generator = answer_generator
         self.incident_workflow = IncidentChatWorkflow(tools)
+        self.checkpointer = MemorySaver()
         self.tracing_enabled = tracing_enabled
         self.langsmith_project = langsmith_project
         self.graph = self._build_graph()
 
     def invoke(self, request: ChatRequest, trace_id: str) -> ChatResponse:
+        thread_id = f"{request.session_id}-{trace_id[:8]}"
         result = self.graph.invoke(
             {"request": request, "trace_id": trace_id},
             config={
+                "configurable": {"thread_id": thread_id},
                 "run_id": UUID(trace_id),
                 "run_name": "british-museum-agent-chat",
                 "tags": [
@@ -95,6 +99,7 @@ class MuseumAgentGraph:
                 "metadata": {
                     "trace_id": trace_id,
                     "session_id": request.session_id,
+                    "thread_id": thread_id,
                     "role": request.user_role.value,
                     "language": request.language,
                     "langsmith_project": self.langsmith_project,
@@ -166,7 +171,7 @@ class MuseumAgentGraph:
             },
         )
         graph.add_edge("finalize", END)
-        return graph.compile()
+        return graph.compile(checkpointer=self.checkpointer)
     def _validate_input(self, state: MuseumAgentState) -> MuseumAgentState:
         request = state["request"]
         message = request.message.strip()

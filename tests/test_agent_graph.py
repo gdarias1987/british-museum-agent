@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+from langgraph.checkpoint.memory import MemorySaver
+
 from british_museum_agent.adapters_mcp.museum_tools import MuseumTools
 from british_museum_agent.application.chat_service import ChatService
 from british_museum_agent.domain.models import ChatRequest
@@ -96,3 +98,32 @@ def test_langgraph_chat_routes_to_no_evidence(tmp_path: Path):
     assert response.tool_calls == []
     assert "no se inventaron datos" in response.safety_notes[0]
     assert response.runtime.retrieval.active is False
+
+
+def test_checkpointer_is_memory_saver(tmp_path: Path):
+    """Verify the graph uses a MemorySaver checkpointer for state persistence."""
+    index = tmp_path / "knowledge_index.json"
+    _write_index(index)
+    service = ChatService(KnowledgeBase(index), MuseumTools(FakeRepository()))
+    assert isinstance(service.agent.checkpointer, MemorySaver)
+
+
+def test_checkpointer_stores_state_after_invoke(tmp_path: Path):
+    """Verify that invoke() persists graph state via checkpointer."""
+    index = tmp_path / "knowledge_index.json"
+    _write_index(index)
+    service = ChatService(KnowledgeBase(index), MuseumTools(FakeRepository()))
+    ckpt = service.agent.checkpointer
+
+    before = len(ckpt.storage)
+
+    service.answer(ChatRequest(
+        message="¿Qué puedo ver de Egipto?",
+        session_id="chkpt-test",
+    ))
+
+    after = len(ckpt.storage)
+    assert after > before, (
+        f"Checkpointer should store state after invoke "
+        f"(before={before}, after={after})"
+    )

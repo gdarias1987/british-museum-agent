@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="GuÃƒÂ­a pedagÃƒÂ³gica y auditorÃƒÂ­a tÃƒÂ©cnica del British Museum Agent.">
+  <meta name="description" content="Guía pedagógica y auditoría técnica del British Museum Agent.">
   <link rel="icon" href="data:,">
-  <title>CÃƒÂ³mo funciona el British Museum Agent</title>
+  <title>Cómo funciona el British Museum Agent</title>
   <style>
     :root {
       color-scheme: light;
@@ -203,7 +203,7 @@
     .flow-node:nth-child(5) { border-color: var(--violet); background: var(--violet-soft); }
     .flow-node:last-child { border-color: var(--green); background: var(--green-soft); }
     .flow-node:not(:last-child)::after {
-      content: "Ã¢â€ â€™";
+      content: "→";
       position: absolute;
       top: 50%;
       right: -1.45rem;
@@ -339,11 +339,11 @@
   <a class="skip-link" href="#contenido">Saltar al contenido principal</a>
 
   <header class="hero">
-    <span class="eyebrow">GuÃƒÂ­a pedagÃƒÂ³gica Ã‚Â· implementaciÃƒÂ³n auditada</span>
-    <h1>CÃƒÂ³mo funciona el British Museum Agent</h1>
-    <p>Una explicaciÃƒÂ³n para entender el sistema, demostrarlo en la entrega y hablar con precisiÃƒÂ³n sobre lo que realmente estÃƒÂ¡ implementado Ã¢â‚¬â€incluidas sus brechas.</p>
-    <div class="hero-meta" aria-label="CaracterÃƒÂ­sticas principales">
-      <span>RAG en espaÃƒÂ±ol</span>
+    <span class="eyebrow">Guía pedagógica · implementación auditada</span>
+    <h1>Cómo funciona el British Museum Agent</h1>
+    <p>Una explicación para entender el sistema, demostrarlo en la entrega y hablar con precisión sobre lo que realmente está implementado —incluidas sus brechas.</p>
+    <div class="hero-meta" aria-label="Características principales">
+      <span>RAG en español</span>
       <span>LangGraph</span>
       <span>Gemini</span>
       <span>MCP + SQLite</span>
@@ -351,20 +351,21 @@
     </div>
   </header>
 
-  <nav class="site-nav" aria-label="ÃƒÂndice de contenidos">
+  <nav class="site-nav" aria-label="Índice de contenidos">
     <ul>
       <li><a href="#resumen">Resumen</a></li>
       <li><a href="#arquitectura">Arquitectura</a></li>
       <li><a href="#grafo">Grafo</a></li>
       <li><a href="#rag">RAG</a></li>
       <li><a href="#ranking">Ranking</a></li>
+      <li><a href="#estructura">Estructura</a></li>
       <li><a href="#roles">Roles</a></li>
       <li><a href="#contratos">Contratos</a></li>
       <li><a href="#ia-observabilidad">IA y trazas</a></li>
       <li><a href="#docker">Docker</a></li>
       <li><a href="#matriz">Matriz</a></li>
       <li><a href="#brechas">Brechas</a></li>
-      <li><a href="#realidad">Real vs. intenciÃƒÂ³n</a></li>
+      <li><a href="#realidad">Real vs. intención</a></li>
       <li><a href="#guion">Guion oral</a></li>
     </ul>
   </nav>
@@ -375,7 +376,7 @@
     <h2 id="titulo-resumen">Sí: la base solicitada quedó implementada y verificada</h2>
     <p class="section-lead">El sistema ejecuta un RAG en español con ChromaDB, embeddings multilingües, reranking Hugging Face, LangGraph, MCP, Gemini y LangSmith. Phoenix OSS agrega trazas locales; el backend expone métricas y existe una ruta Kubernetes preparada.</p>
     <div class="grid grid-3">
-      <article class="card stat"><strong>51 passed</strong>Suite de tests local aprobada.</article>
+      <article class="card stat"><strong>113 passed</strong>Suite de tests local aprobada.</article>
       <article class="card stat"><strong>177 checks</strong>Validador estático Kubernetes aprobado.</article>
       <article class="card stat"><strong>4 servicios</strong>Compose saludable: UI, API, MCP y Phoenix.</article>
     </div>
@@ -440,6 +441,21 @@
     <p class="section-lead">El agente entrega los mejores fragmentos al prompt. El primer score debe superar el umbral configurado para considerar que hay evidencia; si no, refina una vez o responde sin inventar.</p>
   </section>
 
+  <section id="estructura" aria-labelledby="titulo-estructura">
+    <p class="kicker">Organización del código</p><h2 id="titulo-estructura">Estructura del proyecto</h2>
+    <p class="section-lead">Cada componente del pipeline RAG y del agente tiene su propia carpeta, con contratos, tests y documentación. El proyecto sigue una arquitectura hexagonal (puertos y adaptadores).</p>
+    <div class="grid grid-2">
+      <article class="card"><h3><code>retrieval/</code></h3><p>Conecta con ChromaDB persistente para búsqueda semántica. Incluye embeddings multilingües locales (<code>paraphrase-multilingual-MiniLM-L12-v2</code>), indexación idempotente con fingerprint, carga de corpus desde Markdown/PDF, y un fallback léxico con stemming en español si Chroma no está disponible.</p><div class="evidence">Archivos: <code>vector_store.py</code>, <code>corpus.py</code>, <code>knowledge_base.py</code>, <code>indexer.py</code></div></article>
+      <article class="card"><h3><code>ranking/</code></h3><p>Implementa el re-ranker cross-encoder (<code>mmarco-mMiniLMv2-L12-H384-v1</code>). Toma los candidatos de Chroma y los reordena por relevancia real. El score final combina 25% similitud vectorial + 75% reranker. Expone estado de salud (<code>reranker_active</code>) para el endpoint de health check de la API.</p><div class="evidence">Archivos: <code>reranker.py</code></div></article>
+      <article class="card"><h3><code>orchestration/</code></h3><p>Orquestación con LangChain: define la evaluación determinista de grounding (<code>evaluate_grounding</code>) que mide evidencia, cobertura de fuentes y longitud de respuesta. También refina la consulta para reintentos (<code>refine_retrieval_query</code>). El pipeline de generación (LCEL) se re-exporta desde aquí para que la carpeta exponga todos los símbolos de orquestación.</p><div class="evidence">Archivos: <code>quality.py</code>, <code>__init__.py</code> (re-exporta <code>AnswerGenerator</code>)</div></article>
+      <article class="card"><h3><code>agent/</code></h3><p>Agente cíclico con LangGraph. StateGraph de 9 nodos que valida input, maneja incidentes, recupera contexto, evalúa evidencia, decide si usa tools MCP, genera respuesta con Gemini y evalúa si refinar (máximo 2 intentos). Cada nodo tiene una ruta condicional; el ciclo está acotado para evitar loops infinitos. Incluye detección de consultas operativas y flujo de incidentes en dos pasos (confirmación + ejecución).</p><div class="evidence">Archivos: <code>graph.py</code> (525 líneas)</div></article>
+      <article class="card"><h3><code>adapters_mcp/</code></h3><p>Implementación del Model Context Protocol 1.28.1. Servidor FastMCP con transporte Streamable HTTP y 4 tools: <code>get_gallery_status</code>, <code>get_accessibility_info</code>, <code>create_incident</code>, <code>get_incident</code>. Las tools de escritura están protegidas por un token interno HMAC que viaja como header de transporte (<code>X-MCP-Internal-Token</code>), nunca como argumento de tool. El cliente MCP se comunica con el servidor a través del mismo protocolo, con health check propio.</p><div class="evidence">Archivos: <code>server.py</code>, <code>client.py</code>, <code>museum_tools.py</code></div></article>
+      <article class="card"><h3><code>observability/</code></h3><p>Métricas Prometheus in-process (<code>ServiceMetrics</code>) para HTTP (requests, errores, latencia por ruta), chat (confianza, groundedness proxy, hallucination risk proxy, tool errors) y proceso (CPU, memoria). Endpoint <code>/metrics</code> en formato Prometheus y <code>/api/v1/metrics/summary</code> en JSON. Trazabilidad con Arize Phoenix vía OTLP exporter gRPC + OpenInference LangChain instrumentation. LangSmith integrado por environment variables con tags y metadata.</p><div class="evidence">Archivos: <code>metrics.py</code>, <code>tracing.py</code>, <code>quality.py</code></div></article>
+      <article class="card"><h3><code>deploy/</code></h3><p>Despliegue con Kustomize: base con namespace, backend, UI, MCP server, Phoenix, PVC (4 volúmenes), HPA (UI 2–5 réplicas, backend 1), NetworkPolicies (6 reglas) y Secret template. Overlay dev reduce réplicas. Scripts de automatización: PowerShell (<code>deploy_k8s.ps1</code>) con validate → render → dry-run → apply → status → rollback, y validador estático Python (<code>validate_k8s.py</code>) de 177 checks sin dependencias externas.</p><div class="evidence">Carpetas: <code>base/</code>, <code>overlays/dev/</code></div></article>
+    </div>
+    <div class="callout"><strong>Arquitectura hexagonal:</strong> Además de las carpetas del enunciado, el proyecto incluye <code>api/</code> (endpoints FastAPI), <code>application/</code> (casos de uso), <code>domain/</code> (modelos de dominio), <code>generation/</code> (pipeline LLM), <code>infrastructure/</code> (repositorio SQLite) e <code>interfaces/</code> (UI Streamlit). Todo está en <code>src/british_museum_agent/</code>.</div>
+  </section>
+
   <section id="roles" aria-labelledby="titulo-roles">
     <p class="kicker">Permisos</p><h2 id="titulo-roles">Visitante y personal</h2>
     <div class="grid grid-2"><article class="card"><h3>Visitante</h3><ul><li>Consulta obras, artistas, salas, recorridos y accesibilidad.</li><li>No necesita login.</li><li>No puede ejecutar operaciones staff.</li></ul></article><article class="card"><h3>Personal</h3><ul><li>Inicia sesión con usuario y contraseña demo.</li><li>Recibe JWT firmado.</li><li>Puede consultar estado de salas y registrar incidentes.</li><li>El rol real lo determina FastAPI, no el navegador.</li></ul></article></div>
@@ -474,7 +490,7 @@
   <section id="matriz" aria-labelledby="titulo-matriz">
     <p class="kicker">Evaluación contra el entregable</p><h2 id="titulo-matriz">Matriz de cumplimiento</h2>
     <div class="table-wrap"><table><thead><tr><th>Requisito</th><th>Evidencia actual</th><th class="status-cell">Estado</th></tr></thead><tbody>
-      <tr><td>Componentes modulares</td><td>Retrieval, agent, orchestration, generation, observability, application y MCP.</td><td><span class="badge ok">✓ Cumple</span></td></tr>
+      <tr><td>Componentes modulares</td><td>Retrieval, ranking, agent, orchestration, adapters_mcp, observability, deploy y adicionales (api, application, domain, generation, infrastructure, interfaces).</td><td><span class="badge ok">✓ Cumple</span></td></tr>
       <tr><td>Base vectorial y reranker</td><td>Chroma persistente, 55 chunks, embeddings multilingües y cross-encoder Hugging Face.</td><td><span class="badge ok">✓ Cumple</span></td></tr>
       <tr><td>Orquestación LangChain</td><td>Pipeline LCEL observable para la generación.</td><td><span class="badge ok">✓ Cumple</span></td></tr>
       <tr><td>Agente cíclico LangGraph</td><td>Reintento controlado a retrieval, máximo dos intentos, luego END.</td><td><span class="badge ok">✓ Cumple</span></td></tr>
@@ -483,7 +499,7 @@
       <tr><td>Automatización y escalado</td><td>Script operativo, Makefile, HPA UI 2–5 y límite backend documentado.</td><td><span class="badge ok">✓ Cumple</span></td></tr>
       <tr><td>LangSmith y Arize</td><td>LangSmith + Phoenix OSS local; AX Cloud queda opcional.</td><td><span class="badge ok">✓ Phoenix</span></td></tr>
       <tr><td>Latencia, throughput, calidad y recursos</td><td>Endpoint Prometheus/JSON con métricas y proxies documentados.</td><td><span class="badge ok">✓ Con alcance</span></td></tr>
-      <tr><td>Documentación operativa</td><td><code>docs/observability.md</code> y <code>docs/deployment.md</code>.</td><td><span class="badge ok">✓ Cumple</span></td></tr>
+      <tr><td>Documentación operativa</td><td><code>docs/observability.md</code>, <code>docs/deployment.md</code>, <code>docs/metrics.md</code> y 5 ADRs en <code>docs/adr/</code>.</td><td><span class="badge ok">✓ Cumple</span></td></tr>
       <tr><td>Despliegue real</td><td>Manifiestos y scripts listos; no aplicados contra un cluster real.</td><td><span class="badge partial">△ No verificado</span></td></tr>
     </tbody></table></div>
   </section>
@@ -493,6 +509,6 @@
   <section id="realidad" aria-labelledby="titulo-realidad"><p class="kicker">Honestidad arquitectónica</p><h2 id="titulo-realidad">Implementado versus opcional</h2><div class="grid grid-2"><article class="card"><h3>Implementado y conectado</h3><ul><li>Streamlit → FastAPI → LangGraph.</li><li>Chroma con 55 chunks y reranker real.</li><li>Gemini con fallback local.</li><li>MCP sobre SQLite y JWT staff.</li><li>LangSmith y Phoenix OSS.</li><li>Métricas y documentación operativa.</li><li>Docker Compose y Kustomize Kubernetes.</li></ul></article><article class="card"><h3>Declarado como pendiente</h3><ul><li>AX Cloud con credenciales reales.</li><li>Prometheus/Grafana centralizado.</li><li>Dataset factual para evaluar alucinaciones.</li><li>Aplicación en cluster Kubernetes real.</li><li>Escalado horizontal del backend con almacenamiento multi-writer.</li></ul></article></div><div class="callout good"><strong>Cómo presentarlo:</strong><p>“El sistema entregable es completo y demostrable en local, con una ruta Kubernetes verificable. Las limitaciones de plataforma y evaluación están documentadas, no ocultas.”</p></div></section>
 
   <section id="guion" aria-labelledby="titulo-guion"><p class="kicker">Presentación</p><h2 id="titulo-guion">Guion oral de 3 minutos</h2><div class="script"><p><span class="time">0:00–0:30 · Problema.</span> “Es un asistente en español para visitantes y personal del British Museum. Streamlit presenta, FastAPI protege y LangGraph decide.”</p><p><span class="time">0:30–1:10 · RAG.</span> “Indexamos 55 fragmentos en Chroma, recuperamos candidatos con embeddings y los reordenamos con un cross-encoder 25/75.”</p><p><span class="time">1:10–1:45 · MCP.</span> “Los datos operativos pasan por tools MCP respaldadas por SQLite. El personal usa JWT; el visitante consulta sin login.”</p><p><span class="time">1:45–2:20 · IA.</span> “Gemini genera desde evidencia. LangChain usa LCEL; LangSmith y Phoenix permiten observar la ejecución; hay fallbacks explícitos.”</p><p><span class="time">2:20–3:00 · Operación.</span> “La solución tiene métricas, documentación, Docker Compose y Kubernetes preparado. AX Cloud, evaluación factual y ejecución en un cluster real quedan declarados como próximos pasos.”</p></div></section>
-</main><footer><p><strong>British Museum Agent · Guía pedagógica basada en implementación y verificaciones locales</strong></p><p>Última verificación: 51 tests aprobados, 177 checks Kubernetes, Compose saludable y chat RAG end-to-end.</p></footer>
+</main><footer><p><strong>British Museum Agent · Guía pedagógica basada en implementación y verificaciones locales</strong></p><p>Última verificación: 113 tests aprobados, 177 checks Kubernetes, Compose saludable y chat RAG end-to-end.</p></footer>
 </body>
 </html>

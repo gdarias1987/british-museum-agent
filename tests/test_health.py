@@ -100,3 +100,23 @@ def test_repository_readiness_requires_tables_and_minimum_seed(
 ):
     assert seeded_repository.is_ready() is True
     assert SQLiteRepository(tmp_path / "missing.db").is_ready() is False
+
+
+def test_health_keeps_chroma_ready_without_reranker(
+    api_client: TestClient,
+    test_settings: Settings,
+):
+    chroma_settings = test_settings.model_copy(update={"retrieval_backend": "chroma"})
+    app.dependency_overrides[get_settings] = lambda: chroma_settings
+    app.dependency_overrides[get_knowledge_retriever] = lambda: RetrievalStub(
+        backend="chroma",
+        retrieval_active=True,
+        reranker_active=False,
+    )
+
+    response = api_client.get("/api/v1/health")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["components"]["retrieval"]["ready"] is True
+    assert payload["components"]["reranker"]["active"] is False

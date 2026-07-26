@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import re
 from time import perf_counter
 from typing import Any, TypedDict
@@ -20,6 +21,7 @@ from british_museum_agent.domain.models import (
 )
 from british_museum_agent.generation.answer_generator import (
     AnswerGenerator,
+    GenerationResult,
     GenerationStatus,
 )
 from british_museum_agent.orchestration.quality import (
@@ -32,6 +34,18 @@ from british_museum_agent.retrieval.knowledge_base import (
     KnowledgeDocument,
     KnowledgeRetriever,
 )
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+MAX_EXCERPT_LENGTH: int = 420
+
+CONFIDENCE_NONE: float = 0.0
+CONFIDENCE_LOW: float = 0.2
+CONFIDENCE_MEDIUM: float = 0.5
+CONFIDENCE_HIGH: float = 0.85
 
 
 class MuseumAgentState(TypedDict, total=False):
@@ -84,11 +98,16 @@ class MuseumAgentGraph:
 
     def invoke(self, request: ChatRequest, trace_id: str) -> ChatResponse:
         thread_id = f"{request.session_id}-{trace_id[:8]}"
+        try:
+            run_id = UUID(trace_id)
+        except ValueError:
+            run_id = None
+            logger.warning("Invalid trace_id=%r, using run_id=None", trace_id)
         result = self.graph.invoke(
             {"request": request, "trace_id": trace_id},
             config={
                 "configurable": {"thread_id": thread_id},
-                "run_id": UUID(trace_id),
+                "run_id": run_id,
                 "run_name": "british-museum-agent-chat",
                 "tags": [
                     "british-museum",
@@ -183,7 +202,7 @@ class MuseumAgentGraph:
                 "answer": "Necesito una consulta para poder ayudarte.",
                 "sources": [],
                 "tool_calls": [],
-                "confidence": 0.0,
+                "confidence": CONFIDENCE_NONE,
                 "needs_clarification": True,
                 "safety_notes": ["La consulta vacía fue rechazada antes de recuperar información."],
                 "runtime": self._runtime_status(generation_status),
@@ -217,6 +236,16 @@ class MuseumAgentGraph:
     def _route_after_incident_handling(self, state: MuseumAgentState) -> str:
         return "handled" if state.get("incident_handled", False) else "continue"
 
+    def _safe_search(self, query: str) -> list[tuple[KnowledgeDocument, float]]:
+        """Wrap knowledge_base.search() with exception handling."""
+        try:
+            return self.knowledge_base.search(query)
+        except Exception as exc:
+            logger.error(
+                "knowledge_base.search() falló: %s: %s", type(exc).__name__, exc
+            )
+            return []
+
     def _retrieve_context(self, state: MuseumAgentState) -> MuseumAgentState:
         request = state["request"]
         query = state.get("refined_query") or request.message
@@ -228,7 +257,7 @@ class MuseumAgentGraph:
         )
         return {
             **state,
-            "matches": self.knowledge_base.search(query),
+            "matches": self._safe_search(query),
             "retrieval_query": query,
             "iteration_count": iteration_count,
             "retry_requested": False,
@@ -244,7 +273,11 @@ class MuseumAgentGraph:
             **state,
             "operational_query": operational_query,
             "needs_clarification": not has_evidence and not operational_query,
-            "confidence": matches[0][1] if has_evidence else (0.5 if operational_query else 0.2),
+            "confidence": (
+                matches[0][1]
+                if has_evidence
+                else (CONFIDENCE_MEDIUM if operational_query else CONFIDENCE_LOW)
+            ),
         }
 
     def _route_after_context_evaluation(self, state: MuseumAgentState) -> str:
@@ -303,12 +336,17 @@ class MuseumAgentGraph:
         tool_succeeded = call.status == "success"
         return {
             **state,
-            "tool_results": [output],
-            "tool_calls": [call],
+            "tool_results": state.get("tool_results", []) + [output],
+            "tool_calls": state.get("tool_calls", []) + [call],
             "tool_execution_attempted": True,
-            "confidence": max(state.get("confidence", 0.0), 0.85) if tool_succeeded else 0.2,
+            "confidence": (
+                max(state.get("confidence", CONFIDENCE_NONE), CONFIDENCE_HIGH)
+                if tool_succeeded
+                else CONFIDENCE_LOW
+            ),
             "needs_clarification": not tool_succeeded and not bool(state.get("matches")),
         }
+
     def _generate_answer(self, state: MuseumAgentState) -> MuseumAgentState:
         request = state["request"]
         matches = state.get("matches", [])
@@ -319,16 +357,28 @@ class MuseumAgentGraph:
                 url=doc.url,
                 chunk_id=doc.chunk_id,
                 score=score,
-                excerpt=doc.text[:420],
+                excerpt=doc.text[:MAX_EXCERPT_LENGTH],
             )
             for doc, score in matches
         ]
-        result = self.answer_generator.generate(
-            request=request,
-            matches=matches,
-            tool_results=state.get("tool_results", []),
-            trace_id=state["trace_id"],
-        )
+        try:
+            result = self.answer_generator.generate(
+                request=request,
+                matches=matches,
+                tool_results=state.get("tool_results", []),
+                trace_id=state["trace_id"],
+            )
+        except Exception as exc:
+            logger.error("generate() failed: %s: %s", type(exc).__name__, exc)
+            result = GenerationResult(
+                answer="Lo siento, no pude generar una respuesta en este momento. El servicio de IA no está disponible.",
+                status=GenerationStatus(
+                    provider="local_error_fallback",
+                    active=False,
+                    detail=f"Generation failed ({type(exc).__name__}).",
+                ),
+                safety_note="La generación falló por un error interno; no se devolvió contenido generado.",
+            )
         retrieval_status = self.knowledge_base.status
         safety_notes = [
             result.safety_note,
@@ -354,8 +404,8 @@ class MuseumAgentGraph:
                 "Probá mencionar una sala, período, artista, objeto o necesidad de accesibilidad."
             ),
             "sources": [],
-            "tool_calls": [],
-            "confidence": 0.2,
+            "tool_calls": state.get("tool_calls", []),
+            "confidence": CONFIDENCE_LOW,
             "needs_clarification": True,
             "generation_status": generation_status,
             "runtime": self._runtime_status(generation_status),
@@ -366,6 +416,20 @@ class MuseumAgentGraph:
         }
 
     def _evaluate_or_refine(self, state: MuseumAgentState) -> MuseumAgentState:
+        generation_status = state.get("generation_status")
+        if (
+            generation_status is not None
+            and generation_status.provider == "local_error_fallback"
+        ):
+            return {
+                **state,
+                "retry_reason": "generation_provider_failure",
+                "quality_signal": "generation_error_fallback",
+                "grounding_score": 0.0,
+                "retry_requested": False,
+                "needs_clarification": False,
+            }
+
         evaluation = evaluate_grounding(
             matches=state.get("matches", []),
             tool_calls=state.get("tool_calls", []),
@@ -518,7 +582,7 @@ def _detect_operational_gallery_status(
 
 
 def _detect_gallery_id(message: str, location_hint: str | None) -> str | None:
-    text = f"{message} {location_hint or ''}".lower()
+    text = f"{message} {location_hint or ''}".casefold()
     if re.search(r"\b(room|sala)\s*4\b", text):
         return "room-4"
     if re.search(r"\b(room|rooms|sala|salas)\s*6\s*-\s*10\b", text):

@@ -9,6 +9,10 @@ from typing import Any
 
 from pypdf import PdfReader
 
+# Increment whenever chunk_markdown() algorithm changes.
+# Stored in the index manifest so rebuilds are triggered automatically.
+CHUNKING_ALGO_VERSION = "v1"
+
 
 @dataclass(frozen=True)
 class CorpusChunk:
@@ -157,11 +161,15 @@ def chunk_markdown(body: str, title: str, *, max_chars: int = 900) -> list[str]:
     current: list[str] = []
     current_length = len(prefix)
     for segment in segments:
-        added_length = len(segment) + (2 if current else 0)
-        if current and current_length + added_length > max_chars:
-            chunks.append(prefix + "\n\n".join(current))
+        segment_len = len(segment)
+        added_length = segment_len + (2 if current else 0)
+        # Check overflow even for the first segment
+        if current_length + added_length > max_chars:
+            if current:
+                chunks.append(prefix + "\n\n".join(current))
+            # If a single segment exceeds max_chars, isolate it anyway
             current = [segment]
-            current_length = len(prefix) + len(segment)
+            current_length = len(prefix) + segment_len
         else:
             current.append(segment)
             current_length += added_length
@@ -178,7 +186,7 @@ def _split_oversized_text(text: str, max_chars: int) -> list[str]:
     if len(units) == 1:
         units = [
             sentence.strip()
-            for sentence in re.split(r"(?<=[.!?])\s+", text)
+            for sentence in re.split(r"(?<=[.!?¡¿])\s+", text)
             if sentence.strip()
         ]
 
@@ -215,7 +223,10 @@ def _split_by_words(text: str, max_chars: int) -> list[str]:
 
 def corpus_fingerprint(raw_dir: Path, *, embedding_model: str, max_chars: int = 900) -> str:
     digest = hashlib.sha256()
-    digest.update(f"embedding={embedding_model}\nmax_chars={max_chars}\n".encode())
+    digest.update(
+        f"embedding={embedding_model}\nmax_chars={max_chars}\n"
+        f"chunk_algo={CHUNKING_ALGO_VERSION}\n".encode()
+    )
     corpus_files = sorted(
         (
             path
@@ -227,7 +238,13 @@ def corpus_fingerprint(raw_dir: Path, *, embedding_model: str, max_chars: int = 
     for path in corpus_files:
         digest.update(path.relative_to(raw_dir).as_posix().encode())
         digest.update(b"\0")
-        digest.update(path.read_bytes())
+        # Streaming hash to avoid loading large PDFs entirely in memory
+        with path.open("rb") as fh:
+            while True:
+                buf = fh.read(65536)
+                if not buf:
+                    break
+                digest.update(buf)
         digest.update(b"\0")
     return digest.hexdigest()
 

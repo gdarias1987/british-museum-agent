@@ -85,3 +85,74 @@ def test_persistent_chroma_index_is_idempotent_and_reranks(tmp_path: Path):
     assert matches[0][1] > matches[1][1]
     assert retriever.status.backend == "chroma"
     assert retriever.status.reranker_active is True
+
+
+class InvalidLengthReranker:
+    model_name = "invalid-length-reranker"
+
+    def score(self, query: str, passages: Sequence[str]) -> list[float]:
+        return [0.5]
+
+
+def test_invalid_reranker_score_count_falls_back_to_vector_order(tmp_path: Path):
+    chroma_path = tmp_path / "chroma"
+    chunks = [
+        _chunk("rosetta-1", "Piedra de Rosetta", "La Piedra de Rosetta está en la Sala 4."),
+        _chunk("mesopotamia-1", "Mesopotamia", "La Sala 56 presenta civilizaciones mesopotámicas."),
+    ]
+    embeddings = FakeEmbeddings()
+    build_chroma_index(
+        chroma_path=chroma_path,
+        collection_name="museum_test",
+        chunks=chunks,
+        fingerprint="invalid-reranker-corpus",
+        embedding_model=embeddings,
+    )
+    retriever = VectorKnowledgeBase(
+        chroma_path,
+        "museum_test",
+        embeddings,
+        InvalidLengthReranker(),
+        candidate_k=2,
+    )
+
+    matches = retriever.search("Mesopotamia", top_k=2)
+
+    assert [match[0].chunk_id for match in matches] == [
+        "mesopotamia-1",
+        "rosetta-1",
+    ]
+    assert retriever.status.reranker_active is False
+    assert retriever.status.reranker_detail == "Reranking unavailable: ValueError"
+
+
+class RecordingEmbeddings(FakeEmbeddings):
+    def __init__(self):
+        self.last_query = ""
+
+    def embed_query(self, text: str) -> list[float]:
+        self.last_query = text
+        return super().embed_query(text)
+
+
+def test_long_query_is_truncated_before_embedding(tmp_path: Path):
+    chroma_path = tmp_path / "chroma"
+    embeddings = RecordingEmbeddings()
+    chunks = [_chunk("one", "One", "Contenido de prueba")]
+    build_chroma_index(
+        chroma_path=chroma_path,
+        collection_name="museum_test",
+        chunks=chunks,
+        fingerprint="query-limit-corpus",
+        embedding_model=embeddings,
+    )
+    retriever = VectorKnowledgeBase(
+        chroma_path,
+        "museum_test",
+        embeddings,
+        FakeReranker(),
+    )
+
+    retriever.search("x" * 600)
+
+    assert len(embeddings.last_query) == 512

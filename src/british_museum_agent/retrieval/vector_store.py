@@ -1,12 +1,23 @@
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol, Sequence
 
 from british_museum_agent.ranking.reranker import MultilingualCrossEncoderReranker
 from british_museum_agent.retrieval.knowledge_base import KnowledgeDocument, RetrievalStatus
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+MAX_QUERY_LENGTH: int = 512  # chars — SentenceTransformer context limit safety
+VECTOR_WEIGHT: float = 0.25
+RERANKER_WEIGHT: float = 0.75
+CANDIDATE_K: int = 10
 
 
 class VectorStoreUnavailable(RuntimeError):
@@ -74,7 +85,7 @@ class VectorKnowledgeBase:
 
         self.embedding_model = embedding_model
         self.reranker = reranker
-        self.candidate_k = candidate_k
+        self.candidate_k = candidate_k or CANDIDATE_K
         self._reranker_error: str | None = None
         self._reranker_loaded = False
         try:
@@ -84,8 +95,9 @@ class VectorKnowledgeBase:
             )
             self.collection = self.client.get_collection(collection_name)
         except Exception as exc:
+            logger.error("Chroma init failed: %s: %s", type(exc).__name__, exc)
             raise VectorStoreUnavailable(
-                "No usable persistent Chroma index was found."
+                f"Chroma index unavailable ({type(exc).__name__}: {exc})."
             ) from exc
 
         if self.collection.count() == 0:
@@ -93,7 +105,8 @@ class VectorKnowledgeBase:
         indexed_model = (self.collection.metadata or {}).get("embedding_model")
         if indexed_model and indexed_model != embedding_model.model_name:
             raise VectorStoreUnavailable(
-                "The Chroma index was created with a different embedding model."
+                f"Chroma index was created with model {indexed_model!r}, "
+                f"current is {embedding_model.model_name!r}."
             )
 
     @property
@@ -130,19 +143,30 @@ class VectorKnowledgeBase:
                 raise VectorStoreUnavailable("Chroma returned no document during warmup.")
             scores = self.reranker.score(query, documents)
             if len(scores) != len(documents):
-                raise VectorStoreUnavailable("The reranker returned an invalid warmup result.")
+                self._reranker_error = "reranker invalid warmup result"
+                self._reranker_loaded = False
+                logger.warning(
+                    "Reranker warmup: score count mismatch (%d vs %d)",
+                    len(scores),
+                    len(documents),
+                )
+                return
             self._reranker_loaded = True
             self._reranker_error = None
+        except VectorStoreUnavailable:
+            raise  # Chroma failure → propagate so ResilientKnowledgeBase can fall back
         except Exception as exc:
             self._reranker_loaded = False
             self._reranker_error = type(exc).__name__
-            if isinstance(exc, VectorStoreUnavailable):
-                raise
-            raise VectorStoreUnavailable(
-                f"Retrieval model warmup failed ({type(exc).__name__})."
-            ) from exc
+            logger.warning("Reranker warmup failed: %s: %s", type(exc).__name__, exc)
+            # Don't propagate — Chroma is still usable without reranker
 
     def search(self, query: str, top_k: int = 4) -> list[tuple[KnowledgeDocument, float]]:
+        if not query or not query.strip():
+            return []
+        if len(query) > MAX_QUERY_LENGTH:
+            logger.warning("Query truncated from %d to %d chars", len(query), MAX_QUERY_LENGTH)
+            query = query[:MAX_QUERY_LENGTH]
         query_embedding = self.embedding_model.embed_query(query)
         result = self.collection.query(
             query_embeddings=[query_embedding],
@@ -170,6 +194,10 @@ class VectorKnowledgeBase:
 
         try:
             reranker_scores = self.reranker.score(query, [doc.text for doc, _ in candidates])
+            if len(reranker_scores) != len(candidates):
+                raise ValueError(
+                    "Reranker returned a different number of scores than candidates."
+                )
             self._reranker_loaded = True
             self._reranker_error = None
         except Exception as exc:
@@ -182,7 +210,14 @@ class VectorKnowledgeBase:
                 document=document,
                 vector_score=vector_score,
                 reranker_score=reranker_score,
-                final_score=min(1.0, max(0.0, 0.25 * vector_score + 0.75 * reranker_score)),
+                final_score=min(
+                    1.0,
+                    max(
+                        0.0,
+                        VECTOR_WEIGHT * vector_score
+                        + RERANKER_WEIGHT * reranker_score,
+                    ),
+                ),
             )
             for (document, vector_score), reranker_score in zip(
                 candidates, reranker_scores, strict=True
@@ -193,7 +228,12 @@ class VectorKnowledgeBase:
 
 
 class ResilientKnowledgeBase:
-    def __init__(self, primary: VectorKnowledgeBase | None, fallback, reason: str | None = None):
+    def __init__(
+        self,
+        primary: VectorKnowledgeBase | None,
+        fallback,
+        reason: str | None = None,
+    ):
         self.primary = primary
         self.fallback = fallback
         self._fallback_reason = reason

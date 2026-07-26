@@ -181,16 +181,94 @@ def _confirmation_token(message: str) -> str | None:
     return match.group(1) if match else None
 
 
+_GALLERY_ALIASES: dict[str, str] = {
+    # Sala 4 — Egipto Antiguo
+    r"\b(sala|room)\s*4\b": "room-4",
+    # Rooms 6-10 — Grecia (Parthenon)
+    r"\b(sala|room|salas|rooms)\s*(?:del\s+)?(?:6|7|8|9|10)\b": "rooms-6-10",
+    # Salas 42-43 — Antiguo Oriente Medio
+    r"\b(sala|room|salas|rooms)\s*(?:42|43)\b": "rooms-42-43-52-59",
+    # Salas 52-59 — Antiguo Oriente Medio y Mesopotamia
+    r"\b(sala|room|salas|rooms)\s*5[2-9]\b": "rooms-42-43-52-59",
+    # Salas 61-66 — Egipto, Sudán y momias
+    r"\b(sala|room|salas|rooms)\s*6[1-6]\b": "rooms-61-66",
+    # Medio Oriente textual
+    r"\b(?:medio\s+oriente|middle\s+east)\b": "rooms-42-43-52-59",
+}
+
+_CATEGORY_MAP: dict[str, str] = {
+    "accesibilidad": "accessibility",
+    "senalizacion": "signage",
+    "cartel": "signage",
+    "seguridad": "safety",
+    "limpieza": "cleanliness",
+    "mantenimiento": "maintenance",
+}
+
+_PRIORITY_MAP: dict[str, str] = {
+    "prioridad baja": "low",
+    "prioridad media": "medium",
+    "prioridad alta": "high",
+}
+
+
 def _extract_incident(message: str, location_hint: str | None) -> tuple[dict[str, str], list[str]]:
     text = _normalize(f"{message} {location_hint or ''}")
-    gallery_id = "room-4" if re.search(r"\b(sala|room)\s*4\b", text) else None
-    category = next((name for token, name in {"accesibilidad": "accessibility", "senalizacion": "signage", "cartel": "signage", "seguridad": "safety", "limpieza": "cleanliness", "mantenimiento": "maintenance"}.items() if token in text), None)
-    priority = next((value for token, value in {"prioridad baja": "low", "prioridad media": "medium", "prioridad alta": "high"}.items() if token in text), None)
-    description = re.split(r"\b(registr\w*|carga|crear|crea)\w*\b", message, maxsplit=1, flags=re.IGNORECASE)[0]
-    description = re.sub(r"\s+", " ", description).strip(" .")
-    payload = {"gallery_id": gallery_id or "", "category": category or "", "description": description, "priority": priority or ""}
-    missing = [label for label, value in (("sala reconocida", gallery_id), ("categor\u00eda reconocida", category), ("prioridad baja/media/alta", priority), ("descripci\u00f3n", description if len(description) >= 5 else None)) if not value]
+
+    # Gallery ID
+    gallery_id: str | None = None
+    for pattern, gid in _GALLERY_ALIASES.items():
+        if re.search(pattern, text):
+            gallery_id = gid
+            break
+
+    # Category
+    category = next(
+        (name for token, name in _CATEGORY_MAP.items() if token in text),
+        None,
+    )
+
+    # Priority
+    priority = next(
+        (value for token, value in _PRIORITY_MAP.items() if token in text),
+        None,
+    )
+
+    # Description: take everything before the command verb, clean it up
+    description = re.split(
+        r"\b(registr\w*|carga|crear|crea|reportar|abrir|nuev[oa])\w*\b",
+        message,
+        maxsplit=1,
+        flags=re.IGNORECASE,
+    )[0]
+    # Remove leading noise like "Quiero", "Necesito", "Hay que", etc.
+    description = re.sub(
+        r"^\s*(?:quiero|necesito|hay\s+que|deb[eo]|pod[eí]as|me\s+gustar[íi]a|por\s+favor)\s+",
+        "",
+        description,
+        flags=re.IGNORECASE,
+    )
+    description = re.sub(r"\s+", " ", description).strip(" .,;:")
+
+    payload: dict[str, str] = {
+        "gallery_id": gallery_id or "",
+        "category": category or "",
+        "description": description,
+        "priority": priority or "",
+    }
+
+    missing = [
+        label
+        for label, value in (
+            ("sala reconocida", gallery_id),
+            ("categoría reconocida", category),
+            ("prioridad baja/media/alta", priority),
+            ("descripción", description if len(description) >= 5 else None),
+        )
+        if not value
+    ]
     if missing:
         return payload, missing
+
     IncidentCreateRequest(**payload)
     return payload, []

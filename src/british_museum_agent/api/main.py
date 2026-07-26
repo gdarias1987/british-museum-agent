@@ -62,6 +62,7 @@ async def lifespan(app: FastAPI):
 
 
 _boot_settings = get_settings()
+
 app = FastAPI(title=_boot_settings.app_name, version="1.0.0", lifespan=lifespan)
 
 
@@ -96,12 +97,10 @@ def health(
     retrieval_status = retriever.status
     sqlite_ready = repo.is_ready()
     chroma_required = settings.retrieval_backend == "chroma"
+    # The cross-encoder improves ranking but is not required for availability:
+    # Chroma can still serve vector-ranked results when reranker warmup fails.
     retrieval_ready = retrieval_status.retrieval_active and (
-        not chroma_required
-        or (
-            retrieval_status.backend == "chroma"
-            and retrieval_status.reranker_active
-        )
+        not chroma_required or retrieval_status.backend == "chroma"
     )
     try:
         mcp_ready = tools.is_ready()

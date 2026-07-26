@@ -6,6 +6,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from british_museum_agent.adapters_mcp.museum_tools import MuseumTools
 from british_museum_agent.application.chat_service import ChatService
 from british_museum_agent.domain.models import ChatRequest
+from british_museum_agent.generation.answer_generator import GenerationStatus
 from british_museum_agent.retrieval.knowledge_base import KnowledgeBase
 
 
@@ -127,3 +128,30 @@ def test_checkpointer_stores_state_after_invoke(tmp_path: Path):
         f"Checkpointer should store state after invoke "
         f"(before={before}, after={after})"
     )
+
+
+class FailingGenerator:
+    @property
+    def configured_status(self) -> GenerationStatus:
+        return GenerationStatus(provider="gemini", active=True, detail="test")
+
+    def generate(self, **kwargs):
+        raise RuntimeError("simulated provider failure")
+
+
+def test_generation_failure_returns_explicit_safe_fallback(tmp_path: Path):
+    index = tmp_path / "knowledge_index.json"
+    _write_index(index)
+    service = ChatService(
+        KnowledgeBase(index),
+        MuseumTools(FakeRepository()),
+        answer_generator=FailingGenerator(),
+    )
+
+    response = service.answer(ChatRequest(message="¿Qué puedo ver de Egipto?"))
+
+    assert response.needs_clarification is False
+    assert response.runtime.generation.mode == "local_error_fallback"
+    assert response.runtime.generation.active is False
+    assert "servicio de IA no está disponible" in response.answer
+    assert any("error interno" in note for note in response.safety_notes)

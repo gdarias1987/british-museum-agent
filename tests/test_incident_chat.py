@@ -3,7 +3,10 @@
 import re
 
 from british_museum_agent.application.chat_service import ChatService
-from british_museum_agent.application.incident_chat import IncidentChatWorkflow
+from british_museum_agent.application.incident_chat import (
+    IncidentChatWorkflow,
+    _extract_incident,
+)
 from british_museum_agent.domain.models import ChatRequest, ToolCall, UserRole
 from british_museum_agent.retrieval.knowledge_base import RetrievalStatus
 
@@ -120,3 +123,32 @@ def test_visitor_incident_id_query_is_blocked_before_rag_and_mcp():
 
     assert "JWT válido" in response.answer
     assert response.tool_calls == []
+
+
+def test_incident_without_description_requests_the_missing_field():
+    payload, missing = _extract_incident(
+        "Registrá un incidente de accesibilidad en la sala 7 de prioridad alta.",
+        "Sala 7",
+    )
+
+    assert payload["gallery_id"] == "rooms-6-10"
+    assert payload["description"] == ""
+    assert "descripción" in missing
+
+
+def test_incident_gallery_aliases_cover_all_aggregate_ranges():
+    cases = {
+        7: "rooms-6-10",
+        10: "rooms-6-10",
+        58: "rooms-42-43-52-59",
+        66: "rooms-61-66",
+    }
+
+    for room, expected_gallery in cases.items():
+        payload, missing = _extract_incident(
+            f"En la sala {room} hay una rampa bloqueada de accesibilidad. "
+            "Registrá un incidente de prioridad alta.",
+            None,
+        )
+        assert missing == []
+        assert payload["gallery_id"] == expected_gallery

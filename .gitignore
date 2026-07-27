@@ -11,3 +11,4 @@ __pycache__/
 /data/sqlite/**
 /data/processed/knowledge_index.json
 .DS_Store
+/data/runtime/**

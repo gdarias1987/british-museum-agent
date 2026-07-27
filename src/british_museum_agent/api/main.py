@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from hashlib import sha256
+import json
 from time import perf_counter
 from typing import Any
 
 import anyio
 from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 from british_museum_agent.adapters_mcp.client import (
     MCPConfigurationError,
@@ -63,7 +68,39 @@ async def lifespan(app: FastAPI):
 
 _boot_settings = get_settings()
 
+
+def _login_account_key(request: Request) -> str:
+    """Return the opaque account key prepared by the login middleware."""
+
+    return getattr(request.state, "login_account_key", "invalid-login")
+
+
+limiter = Limiter(
+    key_func=get_remote_address,
+    storage_uri=_boot_settings.rate_limit_storage_uri,
+)
 app = FastAPI(title=_boot_settings.app_name, version="1.0.0", lifespan=lifespan)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
+
+
+@app.middleware("http")
+async def prepare_login_rate_limit_key(request: Request, call_next):
+    """Prepare a privacy-preserving account key before SlowAPI evaluates the route."""
+
+    request.state.login_account_key = "invalid-login"
+    if request.method == "POST" and request.url.path == "/api/v1/auth/login":
+        try:
+            payload = json.loads(await request.body())
+            username = payload.get("username") if isinstance(payload, dict) else None
+            if isinstance(username, str) and username.strip():
+                normalized_username = username.strip().casefold()
+                request.state.login_account_key = sha256(
+                    normalized_username.encode("utf-8")
+                ).hexdigest()
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            pass
+    return await call_next(request)
 
 
 @app.middleware("http")
@@ -181,15 +218,26 @@ def metrics_summary() -> dict[str, Any]:
 
 
 @app.post("/api/v1/auth/login", response_model=LoginResponse)
+@limiter.limit(
+    _boot_settings.login_source_rate_limit,
+    key_func=get_remote_address,
+    override_defaults=False,
+)
+@limiter.limit(
+    _boot_settings.login_account_rate_limit,
+    key_func=_login_account_key,
+    override_defaults=False,
+)
 def login(
-    request: LoginRequest,
+    request: Request,
+    body: LoginRequest,
     repo: SQLiteRepository = Depends(get_sqlite_repository),
     settings: Settings = Depends(get_settings),
 ) -> LoginResponse:
-    if not repo.validate_staff_credentials(request.username, request.password):
+    if not repo.validate_staff_credentials(body.username, body.password):
         raise HTTPException(status_code=401, detail="Credenciales de personal inválidas")
     return LoginResponse(
-        access_token=create_staff_access_token(request.username, settings),
+        access_token=create_staff_access_token(body.username, settings),
     )
 
 

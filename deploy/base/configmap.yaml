@@ -17,10 +17,13 @@ data:
   RETRIEVAL_CANDIDATE_K: "10"
   LLM_PROVIDER: gemini
   GEMINI_MODEL: gemini-2.5-flash
-  LANGSMITH_TRACING: "false"
+  LANGSMITH_TRACING: "true"
   LANGSMITH_PROJECT: british-museum-agent
   STAFF_DEMO_USERNAME: staff@example.com
   JWT_EXPIRATION_MINUTES: "60"
+  LOGIN_ACCOUNT_RATE_LIMIT: 10/minute
+  LOGIN_SOURCE_RATE_LIMIT: 120/minute
+  RATE_LIMIT_STORAGE_URI: memory://
   MCP_SERVER_URL: http://mcp-server:8001/mcp
   MCP_TRANSPORT: streamable-http
   MCP_HOST: 0.0.0.0
@@ -28,6 +31,8 @@ data:
   MCP_PATH: /mcp
   STREAMLIT_BACKEND_URL: http://backend:8000
   HF_HOME: /app/.cache/huggingface
-  PHOENIX_ENDPOINT: http://phoenix:6006
+  PHOENIX_ENABLED: "true"
+  PHOENIX_COLLECTOR_ENDPOINT: http://phoenix:4317
+  PHOENIX_PROJECT_NAME: british-museum-agent
   PYTHONDONTWRITEBYTECODE: "1"
   PYTHONUNBUFFERED: "1"

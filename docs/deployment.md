@@ -17,7 +17,7 @@ Los contenedores tienen healthchecks y dependencias ordenadas: MCP debe estar sa
 
 ## Kubernetes
 
-La opción preparada para despliegue es Kubernetes mediante Kustomize:
+La opción de despliegue es Kubernetes mediante Kustomize; fue aplicada y probada end-to-end en el cluster local de Docker Desktop:
 
 - Base: `deploy/base`.
 - Entorno de desarrollo: `deploy/overlays/dev`.
@@ -47,6 +47,18 @@ $env:MCP_INTERNAL_TOKEN = "un-token-real-de-al-menos-32-caracteres"
 
 El script crea/actualiza el `Secret` desde variables de proceso. `deploy/base/secret.example.yaml` es solo una plantilla y no se aplica.
 
+### Operación diaria en Docker Desktop
+
+El administrador único carga `.env` sin imprimir secretos, valida `metrics-server`, construye las imágenes, aplica Kustomize, espera rollouts y crea port-forwards ocultos:
+
+```powershell
+.\scripts\manage_k8s.ps1 start
+.\scripts\manage_k8s.ps1 status
+.\scripts\manage_k8s.ps1 stop
+```
+
+URLs: UI `http://localhost:18501`, API `http://localhost:18000/docs` y Phoenix `http://localhost:16006`. La acción `stop` libera memoria eliminando HPA y escalando los cuatro deployments a cero, pero conserva los PVC. En Docker Desktop el script agrega `--kubelet-insecure-tls` a `metrics-server` cuando el certificado interno del kubelet no incluye su IP; no aplica ese ajuste automáticamente en otros contexts.
+
 ## Escalado y límites actuales
 
 La UI tiene HPA de 2 a 5 réplicas. El backend tiene HPA declarado, pero queda intencionalmente limitado a 1 réplica (`minReplicas: 1`, `maxReplicas: 1`) porque comparte volúmenes `ReadWriteOnce` con SQLite, Chroma y la caché de embeddings. Esto evita corrupción o bloqueos por múltiples escritores.
@@ -61,7 +73,7 @@ No se implementó serverless como ruta principal: el proceso depende de volúmen
 .\scripts\deploy_k8s.ps1 -Action rollback -Overlay dev -Component backend
 ```
 
-El rollback usa `kubectl rollout history` y `kubectl rollout undo`. Antes de usarlo en producción conviene pinnear versiones inmutables de las imágenes; Phoenix está marcado con `:latest` solo para la demo local.
+El rollback usa `kubectl rollout history` y `kubectl rollout undo`. Phoenix está fijado a `arizephoenix/phoenix:19.6.0`; antes de producción también deben publicarse las imágenes propias en un registry con tags inmutables.
 
 ## Operación recomendada
 

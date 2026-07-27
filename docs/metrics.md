@@ -120,7 +120,7 @@ El sistema soporta dos providers de tracing que operan de forma independiente:
 
 ### 3.1 LangSmith
 
-- **Configuración**: variables de entorno `LANGSMITH_API_KEY` y `LANGCHAIN_TRACING`, más un project name configurable desde `Settings`.
+- **Configuración**: variables de entorno `LANGSMITH_API_KEY` y `LANGSMITH_TRACING`, más un project name configurable desde `Settings`.
 - **Activación**: se pasa `tracing_enabled=True` y el `langsmith_project` al `ChatService` y al agente (`StateGraph`).
 - **Visualización**: los traces se envían a la plataforma [LangSmith](https://smith.langchain.com) para inspección de ejecuciones del grafo LangGraph, tiempos por nodo, inputs/outputs y errores.
 
@@ -347,7 +347,7 @@ Combinar Prometheus (métricas agregadas) con LangSmith (trazas individuales) y 
 | Variable                         | Efecto                                         |
 |----------------------------------|------------------------------------------------|
 | `LANGSMITH_API_KEY`              | Habilita tracing en LangSmith.                 |
-| `LANGCHAIN_TRACING`              | Flag booleano para activar tracing.            |
+| `LANGSMITH_TRACING`              | Flag booleano para activar tracing.            |
 | `PHOENIX_API_KEY`                | API key para Arize Phoenix collector.          |
 | `PHOENIX_COLLECTOR_ENDPOINT`     | Endpoint OTLP gRPC del collector.              |
 | `PHOENIX_ENABLED`                | Habilita/deshabilita tracing con Phoenix.      |

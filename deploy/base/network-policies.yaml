@@ -85,6 +85,8 @@ spec:
       ports:
         - protocol: TCP
           port: 6006
+        - protocol: TCP
+          port: 4317
     - to:
         - ipBlock:
             cidr: 0.0.0.0/0
@@ -131,3 +133,5 @@ spec:
       ports:
         - protocol: TCP
           port: 6006
+        - protocol: TCP
+          port: 4317

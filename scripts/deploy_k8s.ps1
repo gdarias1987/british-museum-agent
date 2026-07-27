@@ -51,7 +51,7 @@ function Invoke-Kubectl {
 
     & $script:Kubectl @KubectlArgs
     if ($LASTEXITCODE -ne 0) {
-        throw "kubectl failed with exit code $LASTEXITCODE: $($KubectlArgs -join ' ')"
+        throw "kubectl failed with exit code ${LASTEXITCODE}: $($KubectlArgs -join ' ')"
     }
 }
 

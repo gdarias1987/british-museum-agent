@@ -31,7 +31,7 @@ from british_museum_agent.api.dependencies import (  # noqa: E402
     get_mcp_museum_tools,
     get_sqlite_repository,
 )
-from british_museum_agent.api.main import app  # noqa: E402
+from british_museum_agent.api.main import app, limiter  # noqa: E402
 from british_museum_agent.config import Settings, get_settings  # noqa: E402
 from british_museum_agent.domain.models import ToolCall  # noqa: E402
 from british_museum_agent.infrastructure.sqlite_repository import (  # noqa: E402
@@ -142,8 +142,10 @@ def api_client(
     app.dependency_overrides[get_mcp_museum_tools] = lambda: fake_mcp_tools
     app.dependency_overrides[get_knowledge_retriever] = ReadyLexicalRetriever
     app.dependency_overrides[get_settings] = lambda: test_settings
+    limiter.reset()
     with TestClient(app) as client:
         yield client
+    limiter.reset()
     app.dependency_overrides.clear()
 
 

@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     staff_demo_password: SecretStr | None = None
     jwt_secret: SecretStr | None = None
     jwt_expiration_minutes: int = Field(default=60, gt=0)
+    login_account_rate_limit: str = "10/minute"
+    login_source_rate_limit: str = "120/minute"
+    rate_limit_storage_uri: str = "memory://"
     mcp_server_url: str = "http://localhost:8001/mcp"
     mcp_internal_token: SecretStr | None = None
 

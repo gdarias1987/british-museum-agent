@@ -184,14 +184,16 @@ def _confirmation_token(message: str) -> str | None:
 _GALLERY_ALIASES: dict[str, str] = {
     # Sala 4 — Egipto Antiguo
     r"\b(sala|room)\s*4\b": "room-4",
-    # Rooms 6-10 — Grecia (Parthenon)
+    # Rooms 6-10 — Grecia (Parthenon) — rango y números sueltos
+    r"\b(sala|room|salas|rooms)\s*6\s*-\s*10\b": "rooms-6-10",
     r"\b(sala|room|salas|rooms)\s*(?:del\s+)?(?:6|7|8|9|10)\b": "rooms-6-10",
+    # Salas 61-66 — Egipto, Sudán y momias — rango y números sueltos
+    r"\b(sala|room|salas|rooms)\s*61\s*-\s*66\b": "rooms-61-66",
+    r"\b(sala|room|salas|rooms)\s*6[1-6]\b": "rooms-61-66",
     # Salas 42-43 — Antiguo Oriente Medio
     r"\b(sala|room|salas|rooms)\s*(?:42|43)\b": "rooms-42-43-52-59",
     # Salas 52-59 — Antiguo Oriente Medio y Mesopotamia
     r"\b(sala|room|salas|rooms)\s*5[2-9]\b": "rooms-42-43-52-59",
-    # Salas 61-66 — Egipto, Sudán y momias
-    r"\b(sala|room|salas|rooms)\s*6[1-6]\b": "rooms-61-66",
     # Medio Oriente textual
     r"\b(?:medio\s+oriente|middle\s+east)\b": "rooms-42-43-52-59",
 }

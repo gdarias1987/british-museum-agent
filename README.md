@@ -1,6 +1,32 @@
 # British Museum Agent
 
+> **Autor:** Guillermo Daniel Arias
+> **Lugar y fecha:** Buenos Aires, Argentina — 26 de julio de 2026
+> **Entrega final:** Unidad 1 · Sistema de IA en Producción
+
 Asistente RAG en español para visitantes y personal del British Museum.
+
+## Capturas del sistema
+
+### Consulta RAG con respuesta fundamentada
+
+![Respuesta del British Museum Agent sobre la Piedra de Rosetta](docs/images/ui-rag-answer.png)
+
+La interfaz muestra la respuesta en español, confianza, fuentes recuperadas y trazabilidad de la ejecución.
+
+### Observabilidad con Phoenix
+
+![Trazas del proyecto British Museum Agent en Phoenix](docs/images/phoenix-traces.png)
+
+Phoenix centraliza spans, latencia, tokens y costo estimado de las ejecuciones instrumentadas.
+
+### Trazabilidad con LangSmith
+
+![Trazas del British Museum Agent en LangSmith](docs/images/langsmith-traces.png)
+
+LangSmith registra la ejecución completa de LangChain y LangGraph, con latencia, tokens, costo, tags y metadata del runtime.
+
+![Detalle de una ejecución del British Museum Agent en LangSmith](docs/images/langsmith-trace-detail.png)
 
 ## Arquitectura ejecutable
 
@@ -122,7 +148,7 @@ Persistencia:
 
 ## Observabilidad
 
-El backend expone `GET /metrics` en formato Prometheus y `GET /api/v1/metrics/summary` en JSON. Phoenix OSS corre en `http://localhost:6006` y recibe trazas OTLP por `4317`; los inputs y outputs se ocultan por defecto. LangSmith continúa habilitado con `LANGSMITH_TRACING=true`.
+El backend expone `GET /metrics` en formato Prometheus y `GET /api/v1/metrics/summary` en JSON. Phoenix OSS corre en `http://localhost:6006` y recibe trazas OTLP por `4317`; los inputs y outputs se ocultan por defecto. LangSmith y Phoenix están habilitados y verificados en el despliegue Kubernetes. LangSmith recibe las trazas de LangChain/LangGraph y Phoenix conserva la instrumentación OTLP/OpenInference local.
 
 Ver detalle en `docs/observability.md`.
 
@@ -131,11 +157,22 @@ Ver detalle en `docs/observability.md`.
 La ruta preparada es Kubernetes con Kustomize:
 
 - `deploy/base` y `deploy/overlays/dev`: Deployments, Services, PVC, probes, NetworkPolicy y HPA.
-- `scripts/validate_k8s.py`: 179 checks estáticos.
+- `scripts/validate_k8s.py`: 177 checks estáticos; la validación completa del overlay ejecuta 179 checks.
 - `scripts/deploy_k8s.ps1`: validate, render, dry-run, apply, status y rollback.
+- `scripts/manage_k8s.ps1`: ciclo operativo completo `start`, `stop` y `status`, incluida la carga segura de `.env`, images, rollout y port-forwards.
 - `docs/deployment.md`: persistencia, Secret, metrics server, ReadWriteOnce y límites de escalado.
 
 La UI escala de 2 a 5 réplicas. El backend queda en una réplica hasta migrar SQLite/Chroma a almacenamiento apto para múltiples escritores. Serverless no es la ruta elegida porque el sistema necesita persistencia y warm-up de embeddings.
+
+Inicio y detención reproducibles en Docker Desktop:
+
+```powershell
+.\scripts\manage_k8s.ps1 start
+.\scripts\manage_k8s.ps1 status
+.\scripts\manage_k8s.ps1 stop
+```
+
+`start` publica UI en `http://localhost:18501`, API en `http://localhost:18000/docs` y Phoenix en `http://localhost:16006`. `stop` elimina HPA, escala los deployments a cero y conserva los PVC.
 ## API principal
 
 ### `POST /api/v1/auth/login`
@@ -183,7 +220,7 @@ El backend no accede a SQLite para crear incidentes; usa el contrato MCP.
 
 ## Consideraciones de producción
 
-Los modelos Pydantic limitan el tamaño de mensajes, sesiones, metadatos y credenciales. Para una publicación abierta se debe sumar throttling por IP/sesión en el proxy o plataforma de hosting. La validación estructurada automática de citas de Gemini queda como mejora posterior; el sistema actual exige citas por prompt y conserva las fuentes recuperadas en la respuesta.
+Los modelos Pydantic limitan el tamaño de mensajes, sesiones, metadatos y credenciales. El login aplica SlowAPI con dos cuotas configurables: 10 intentos por cuenta normalizada y 120 por origen directo cada minuto. No se confía en `X-Forwarded-For`, porque el backend puede exponerse directamente y ese header sería falsificable. El almacenamiento en memoria coincide con la única réplica del backend; si se habilitan varias réplicas, `RATE_LIMIT_STORAGE_URI` debe apuntar a Redis u otro backend compartido. Para una publicación abierta también conviene sumar throttling en el proxy o plataforma de hosting. La validación estructurada automática de citas de Gemini queda como mejora posterior; el sistema actual exige citas por prompt y conserva las fuentes recuperadas en la respuesta.
 
 ## Pruebas sin servicios externos
 
@@ -196,7 +233,8 @@ Las pruebas usan SQLite bajo `tmp_path`, dependency overrides y variables de ent
 
 ## Verificación actual
 
-- pytest -q: 115 passed.
-- scripts/validate_k8s.py --kubectl-dry-run skip: 179 checks passed; queda la advertencia esperable de `arizephoenix/phoenix:latest.
+- `pytest -q`: 125 passed.
+- `scripts/validate_k8s.py --kubectl-dry-run skip`: 177 checks estáticos; `deploy_k8s.ps1 -Action validate -Overlay dev`: 179 checks, ambos sin warnings. Phoenix externo está fijado a `19.6.0`.
 - Docker Compose verificado con UI, backend, MCP y Phoenix saludables.
-- Chat end-to-end verificado con Chroma, reranker, Gemini, LangSmith y Phoenix.
+- Kubernetes de Docker Desktop verificado end-to-end: deployments, PVC, HPA, NetworkPolicies, Chroma (117 chunks), reranker, Gemini y trazas Phoenix.
+- LangSmith está activo y verificado en Kubernetes junto con Phoenix OSS; una ejecución real registró latencia, tokens, costo, tags y metadata.
